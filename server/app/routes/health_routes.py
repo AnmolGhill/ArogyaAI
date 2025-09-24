@@ -3,14 +3,15 @@ Health profile routes - matches Node.js healthRoutes.js exactly
 """
 from fastapi import APIRouter, HTTPException, status, Depends, Query
 from app.models.health_profile import HealthProfileCreate, HealthProfileUpdate
-from app.database import get_database
+from app.services.firebase_service import firebase_service
+from datetime import datetime
 import logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["👤 Health Profile Management"])
 
 @router.post("/update-health")
-async def update_health_profile(profile_data: HealthProfileCreate, db=Depends(get_database)):
+async def update_health_profile(profile_data: HealthProfileCreate):
     """
     Save or update health profile - matches Node.js /update-health route exactly
     """
@@ -21,23 +22,16 @@ async def update_health_profile(profile_data: HealthProfileCreate, db=Depends(ge
                 detail="userId is required"
             )
         
-        # Check if profile exists
-        existing_profile = await db.health_profiles.find_one({"userId": profile_data.userId})
-        
-        # Convert profile data to dict
+        # Save to Firestore
         profile_dict = profile_data.dict(exclude_unset=True)
+        profile_dict["updatedAt"] = datetime.utcnow()
         
-        if existing_profile:
-            # Update existing profile
-            await db.health_profiles.update_one(
-                {"userId": profile_data.userId},
-                {"$set": profile_dict}
-            )
-            logger.info(f"✅ Health profile updated for user: {profile_data.userId}")
-        else:
-            # Create new profile
-            await db.health_profiles.insert_one(profile_dict)
-            logger.info(f"✅ Health profile created for user: {profile_data.userId}")
+        # Save to Firestore (merge=True will update existing or create new)
+        db = firebase_service.db
+        profile_ref = db.collection('health_profiles').document(profile_data.userId)
+        profile_ref.set(profile_dict, merge=True)
+        
+        logger.info(f"✅ Health profile saved for user: {profile_data.userId}")
         
         return {"message": "Profile saved successfully"}
         
@@ -51,7 +45,7 @@ async def update_health_profile(profile_data: HealthProfileCreate, db=Depends(ge
         )
 
 @router.get("/user-health")
-async def get_user_health(userId: str = Query(..., description="User ID"), db=Depends(get_database)):
+async def get_user_health(userId: str = Query(..., description="User ID")):
     """
     Load health profile by userId - matches Node.js /user-health route exactly
     """
@@ -62,18 +56,19 @@ async def get_user_health(userId: str = Query(..., description="User ID"), db=De
                 detail="userId is required"
             )
         
-        # Find health profile
-        profile = await db.health_profiles.find_one({"userId": userId})
+        # Find health profile in Firestore
+        db = firebase_service.db
+        profile_ref = db.collection('health_profiles').document(userId)
+        profile_doc = profile_ref.get()
         
-        if not profile:
+        if not profile_doc.exists:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Profile not found"
             )
         
-        # Convert ObjectId to string
-        if "_id" in profile:
-            profile["_id"] = str(profile["_id"])
+        profile = profile_doc.to_dict()
+        profile["userId"] = userId  # Add userId to response
         
         logger.info(f"✅ Health profile loaded for user: {userId}")
         

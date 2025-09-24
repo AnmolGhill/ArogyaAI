@@ -10,11 +10,17 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 
 class Settings(BaseSettings):
-    # Database Configuration
-    MONGO_URI: str = os.getenv("MONGO_URI", "mongodb://localhost:27017/arogyaai")
-    DATABASE_NAME: str = os.getenv("DATABASE_NAME", "arogyaai")
+    # Firebase Configuration
+    FIREBASE_PROJECT_ID: str = os.getenv("FIREBASE_PROJECT_ID", "")
+    FIREBASE_PRIVATE_KEY_ID: str = os.getenv("FIREBASE_PRIVATE_KEY_ID", "")
+    FIREBASE_PRIVATE_KEY: str = os.getenv("FIREBASE_PRIVATE_KEY", "").replace('\\n', '\n')
+    FIREBASE_CLIENT_EMAIL: str = os.getenv("FIREBASE_CLIENT_EMAIL", "")
+    FIREBASE_CLIENT_ID: str = os.getenv("FIREBASE_CLIENT_ID", "")
+    FIREBASE_AUTH_URI: str = os.getenv("FIREBASE_AUTH_URI", "https://accounts.google.com/o/oauth2/auth")
+    FIREBASE_TOKEN_URI: str = os.getenv("FIREBASE_TOKEN_URI", "https://oauth2.googleapis.com/token")
+    FIREBASE_CLIENT_CERT_URL: str = os.getenv("FIREBASE_CLIENT_CERT_URL", "")
     
-    # JWT Configuration
+    # JWT Configuration (still needed for custom tokens)
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
     ALGORITHM: str = os.getenv("ALGORITHM", "HS256")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))

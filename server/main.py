@@ -12,10 +12,11 @@ from pathlib import Path
 
 # Import configuration and database
 from app.config import settings
-from app.database import connect_to_mongo, close_mongo_connection
+from app.database import connect_to_firebase, close_firebase_connection
 
 # Import routes
 from app.routes.auth_routes import router as auth_router
+from app.routes.firebase_auth_routes import router as firebase_auth_router
 from app.routes.health_routes import router as health_router
 from app.routes.diagnosis_routes import router as diagnosis_router
 
@@ -31,7 +32,7 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     # Startup
     try:
-        await connect_to_mongo()
+        await connect_to_firebase()
         logger.info("🚀 FastAPI server starting up...")
     except Exception as e:
         logger.error(f"❌ Startup error: {e}")
@@ -40,7 +41,7 @@ async def lifespan(app: FastAPI):
     yield
     
     # Shutdown
-    await close_mongo_connection()
+    await close_firebase_connection()
     logger.info("🔌 FastAPI server shutting down...")
 
 # Create FastAPI application with enhanced styling
@@ -104,6 +105,7 @@ app.add_middleware(
 
 # Include API routes
 app.include_router(auth_router)
+app.include_router(firebase_auth_router)
 app.include_router(health_router)
 app.include_router(diagnosis_router)
 

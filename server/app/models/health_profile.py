@@ -1,25 +1,15 @@
 """
-Health Profile model - matches the Node.js HealthProfile model exactly
+Health Profile model - Firebase Firestore compatible
 """
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional
-from bson import ObjectId
-
-class PyObjectId(ObjectId):
-    @classmethod
-    def __get_pydantic_core_schema__(cls, source_type, handler):
-        from pydantic_core import core_schema
-        return core_schema.no_info_plain_validator_function(cls.validate)
-
-    @classmethod
-    def validate(cls, v):
-        if not ObjectId.is_valid(v):
-            raise ValueError("Invalid objectid")
-        return ObjectId(v)
+from typing import Optional, Dict, Any
+from datetime import datetime
+import uuid
 
 class HealthProfile(BaseModel):
-    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     userId: str = Field(..., description="Reference to User ID")
+    firebase_uid: Optional[str] = None  # Firebase Auth UID for additional reference
     name: Optional[str] = None
     email: EmailStr
     dob: Optional[str] = None
@@ -33,14 +23,24 @@ class HealthProfile(BaseModel):
     emergencyName: Optional[str] = None
     emergencyRelation: Optional[str] = None
     emergencyPhone: Optional[str] = None
+    createdAt: datetime = Field(default_factory=datetime.utcnow)
+    updatedAt: datetime = Field(default_factory=datetime.utcnow)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for Firestore"""
+        data = self.model_dump()
+        return data
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'HealthProfile':
+        """Create HealthProfile from Firestore document"""
+        return cls(**data)
 
     class Config:
         populate_by_name = True
-        arbitrary_types_allowed = True
-        json_encoders = {ObjectId: str}
         json_schema_extra = {
             "example": {
-                "userId": "507f1f77bcf86cd799439011",
+                "userId": "user-uuid-here",
                 "name": "John Doe",
                 "email": "john@example.com",
                 "dob": "1990-01-01",
@@ -59,6 +59,7 @@ class HealthProfile(BaseModel):
 
 class HealthProfileCreate(BaseModel):
     userId: str
+    firebase_uid: Optional[str] = None
     name: Optional[str] = None
     email: EmailStr
     dob: Optional[str] = None
@@ -87,3 +88,4 @@ class HealthProfileUpdate(BaseModel):
     emergencyName: Optional[str] = None
     emergencyRelation: Optional[str] = None
     emergencyPhone: Optional[str] = None
+    updatedAt: datetime = Field(default_factory=datetime.utcnow)

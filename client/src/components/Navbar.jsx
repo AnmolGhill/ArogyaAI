@@ -1,24 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faHeartbeat, faUser } from '@fortawesome/free-solid-svg-icons';
+import { faHeartbeat, faUser, faSignOutAlt } from '@fortawesome/free-solid-svg-icons';
+import { useAuth } from '../contexts/AuthContext';
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [user, setUser] = useState(null);
+  const { currentUser, userProfile, signOut, loading } = useAuth();
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    // Check if user is logged in
-    const userData = localStorage.getItem('user');
-    if (userData) {
-      setUser(JSON.parse(userData));
+  const handleLogout = async () => {
+    try {
+      const result = await signOut();
+      if (result.success) {
+        navigate('/');
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
     }
-  }, []);
-
-  const handleLogout = () => {
-    localStorage.removeItem('user');
-    setUser(null);
-    window.location.href = '/';
   };
 
   const toggleMenu = () => {
@@ -48,7 +47,7 @@ const Navbar = () => {
             About
           </Link>
 
-          {!user ? (
+          {!currentUser ? (
             <>
               {/* Login button */}
               <Link to="/login" className="btn-primary">
@@ -62,15 +61,35 @@ const Navbar = () => {
             </>
           ) : (
             <>
-              {/* Logout button */}
-              <button className="btn-primary" onClick={handleLogout}>
-                Logout
-              </button>
+              {/* User name display */}
+              {userProfile && (
+                <span className="user-greeting" style={{ 
+                  color: '#10b981', 
+                  fontWeight: '500',
+                  marginRight: '1rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}>
+                  <FontAwesomeIcon icon={faUser} />
+                  {userProfile.name || currentUser.displayName || 'User'}
+                </span>
+              )}
 
-              {/* Profile icon */}
-              <div className="profile-icon" title="Profile">
-                <FontAwesomeIcon icon={faUser} />
-              </div>
+              {/* Logout button */}
+              <button 
+                className="btn-primary" 
+                onClick={handleLogout}
+                disabled={loading}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                <FontAwesomeIcon icon={faSignOutAlt} />
+                {loading ? 'Signing out...' : 'Logout'}
+              </button>
             </>
           )}
         </div>

@@ -1,10 +1,10 @@
 """
-Authentication routes - Firebase Authentication compatible (Fixed)
+Authentication routes - Firebase Authentication compatible
 """
 from fastapi import APIRouter, HTTPException, status
 from app.models.user import UserCreate, UserLogin, UserResponse
 from app.models.otp import SendOTPRequest, OTPVerify, ResetPasswordRequest
-from app.utils.auth import get_password_hash, verify_password, create_access_token
+from app.utils.auth import get_password_hash, verify_password
 from app.utils.otp_generator import generate_otp, is_otp_expired
 from app.utils.email_service import email_service
 from app.services.firebase_service import firebase_service
@@ -16,9 +16,7 @@ router = APIRouter(prefix="/api/auth", tags=["🔐 Authentication & Security"])
 
 @router.post(
     "/register", 
-    response_model=UserResponse,
-    summary="👤 Register New User",
-    description="Create a new user account (Legacy - Use Firebase Auth instead)"
+    description="Create a new user account with secure password hashing (Legacy - Use Firebase Auth instead)"
 )
 async def register_user(user_data: UserCreate):
     """
@@ -26,6 +24,18 @@ async def register_user(user_data: UserCreate):
     
     **Note**: This is a legacy endpoint. For new applications, use Firebase Authentication 
     endpoints at `/api/firebase-auth/` instead.
+    
+    Create a new user account in Firestore with:
+    - 🔒 **Secure Password Hashing** using bcrypt
+    - ✅ **Email Validation** and uniqueness check
+    - 📝 **User Profile Creation** with basic information
+    - 🛡️ **Data Validation** for all input fields
+    
+    ### Required Information:
+    - **Name**: Full name (minimum 3 characters)
+    - **Email**: Valid email address (unique)
+    - **Password**: Secure password (minimum 6 characters)
+    - **Age**: Age between 17-45 years
     """
     try:
         # Check if user already exists
@@ -72,49 +82,33 @@ async def register_user(user_data: UserCreate):
             detail="Registration failed"
         )
 
-@router.post(
-    "/login", 
-    response_model=dict,
-    summary="🔑 Login User",
-    description="Login user with email and password (Legacy - Use Firebase Auth instead)"
-)
-async def login_user(user_data: UserLogin):
-    """
-    ## 🔑 Login User (Legacy)
-    
-    **Note**: This is a legacy endpoint. For new applications, use Firebase Authentication instead.
-    """
+@router.post("/login", response_model=UserResponse)
+async def login_user(user_data: UserLogin, db=Depends(get_database)):
+    """Login user - matches Node.js login route exactly"""
     try:
-        # Find user by email
-        user = await firebase_service.get_user_by_email(user_data.email)
+        # Find user
+        user = await db.users.find_one({"email": user_data.email})
         if not user:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid email or password"
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid credentials"
             )
         
         # Verify password
-        if not user.password or not verify_password(user_data.password, user.password):
+        if not verify_password(user_data.password, user["password"]):
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid email or password"
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid credentials"
             )
-        
-        # Create access token
-        access_token = create_access_token(data={"sub": user.email})
         
         logger.info(f"✅ User logged in successfully: {user_data.email}")
         
-        return {
-            "success": True,
-            "access_token": access_token,
-            "token_type": "bearer",
-            "user": {
-                "id": user.id,
-                "name": user.name,
-                "email": user.email
-            }
-        }
+        return UserResponse(
+            message="Login successful",
+            email=user["email"],
+            name=user["name"],
+            userId=str(user["_id"])
+        )
         
     except HTTPException:
         raise
@@ -125,38 +119,35 @@ async def login_user(user_data: UserLogin):
             detail="Login failed"
         )
 
-@router.post(
-    "/send-otp",
-    summary="📧 Send OTP",
-    description="Send OTP to email for password reset"
-)
-async def send_otp(request: SendOTPRequest):
-    """Send OTP to email for password reset"""
+@router.post("/send-otp")
+async def send_otp(request: SendOTPRequest, db=Depends(get_database)):
+    """Send OTP - matches Node.js send-otp route exactly"""
     try:
-        # Check if user exists
-        user = await firebase_service.get_user_by_email(request.email)
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
-            )
-        
         # Generate OTP
         otp_code = generate_otp()
         
-        # Save OTP to Firestore
-        from app.models.otp import OTP
-        otp_record = OTP(
-            email=request.email,
-            otp=otp_code
+        # Store OTP in database
+        otp_data = {
+            "email": request.email,
+            "otp": otp_code,
+            "createdAt": datetime.utcnow()
+        }
+        
+        # Upsert OTP (update if exists, insert if not)
+        await db.otps.replace_one(
+            {"email": request.email},
+            otp_data,
+            upsert=True
         )
         
-        db = firebase_service.db
-        otp_ref = db.collection('otps').document(otp_record.id)
-        otp_ref.set(otp_record.to_dict())
-        
         # Send email
-        await email_service.send_otp_email(request.email, otp_code)
+        email_sent = await email_service.send_otp_email(request.email, otp_code)
+        
+        if not email_sent:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to send OTP"
+            )
         
         logger.info(f"✅ OTP sent successfully to: {request.email}")
         
@@ -171,44 +162,34 @@ async def send_otp(request: SendOTPRequest):
             detail="Failed to send OTP"
         )
 
-@router.post(
-    "/verify-otp",
-    summary="✅ Verify OTP",
-    description="Verify OTP for password reset"
-)
-async def verify_otp(request: OTPVerify):
-    """Verify OTP for password reset"""
+@router.post("/verify-otp")
+async def verify_otp(request: OTPVerify, db=Depends(get_database)):
+    """Verify OTP - matches Node.js verify-otp route exactly"""
     try:
         # Find OTP record
-        db = firebase_service.db
-        otps_ref = db.collection('otps')
-        query = otps_ref.where('email', '==', request.email).where('otp', '==', request.otp).limit(1)
-        docs = query.stream()
+        otp_record = await db.otps.find_one({"email": request.email})
+        if not otp_record:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="OTP not found"
+            )
         
-        otp_doc = None
-        for doc in docs:
-            otp_doc = doc
-            break
-        
-        if not otp_doc:
+        # Check if OTP matches
+        if otp_record["otp"] != request.otp:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid OTP"
             )
         
-        otp_data = otp_doc.to_dict()
-        
-        # Check if OTP is expired
-        if is_otp_expired(otp_data.get('expiresAt')):
-            # Delete expired OTP
-            otp_doc.reference.delete()
+        # Check if OTP is expired (5 minutes)
+        if is_otp_expired(otp_record["createdAt"], 5):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="OTP has expired"
+                detail="OTP expired"
             )
         
-        # Delete used OTP
-        otp_doc.reference.delete()
+        # Delete OTP after successful verification
+        await db.otps.delete_one({"email": request.email})
         
         logger.info(f"✅ OTP verified successfully for: {request.email}")
         
@@ -220,19 +201,15 @@ async def verify_otp(request: OTPVerify):
         logger.error(f"❌ Verify OTP error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="OTP verification failed"
+            detail="Failed to verify OTP"
         )
 
-@router.post(
-    "/reset-password",
-    summary="🔄 Reset Password",
-    description="Reset user password"
-)
-async def reset_password(request: ResetPasswordRequest):
-    """Reset user password"""
+@router.post("/reset-password")
+async def reset_password(request: ResetPasswordRequest, db=Depends(get_database)):
+    """Reset password - matches Node.js reset-password route exactly"""
     try:
         # Find user
-        user = await firebase_service.get_user_by_email(request.email)
+        user = await db.users.find_one({"email": request.email})
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -242,14 +219,15 @@ async def reset_password(request: ResetPasswordRequest):
         # Hash new password
         hashed_password = get_password_hash(request.newPassword)
         
-        # Update user password in Firestore
-        db = firebase_service.db
-        user_ref = db.collection('users').document(user.id)
-        user_ref.update({'password': hashed_password})
+        # Update user password
+        await db.users.update_one(
+            {"email": request.email},
+            {"$set": {"password": hashed_password}}
+        )
         
         logger.info(f"✅ Password reset successfully for: {request.email}")
         
-        return {"message": "Password reset successfully"}
+        return {"message": "Password reset successful"}
         
     except HTTPException:
         raise
@@ -257,5 +235,5 @@ async def reset_password(request: ResetPasswordRequest):
         logger.error(f"❌ Reset password error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Password reset failed"
+            detail="Failed to reset password"
         )

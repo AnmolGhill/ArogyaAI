@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: arogya-ai-api
+    env: python
+    buildCommand: pip install -r server/requirements.txt
+    startCommand: cd server && python main.py
+    plan: free
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: PORT
+        value: 8000

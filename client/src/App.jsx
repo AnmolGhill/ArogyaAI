@@ -1,5 +1,8 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
+import FirebaseConfig from './components/FirebaseConfig';
+import ProtectedRoute from './components/ProtectedRoute';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Health from './pages/Health';
@@ -51,22 +54,57 @@ const Toast = ({ message, type, onClose }) => {
 
 function App() {
   return (
-    <Router>
-      <div className="App">
-        <Navbar />
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/health" element={<Health />} />
-          <Route path="/chatbot" element={<Chatbot />} />
-          <Route path="/doctor" element={<Doctor />} />
-          <Route path="/medicine" element={<Medicine />} />
-          <Route path="/eqtest" element={<EQTest />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/about" element={<About />} />
-        </Routes>
-      </div>
-    </Router>
+    <AuthProvider>
+      <Router>
+        <div className="App">
+          <FirebaseConfig />
+          <Navbar />
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/about" element={<About />} />
+            
+            {/* Public routes - redirect to home if already logged in */}
+            <Route path="/login" element={
+              <ProtectedRoute requireAuth={false}>
+                <Login />
+              </ProtectedRoute>
+            } />
+            <Route path="/register" element={
+              <ProtectedRoute requireAuth={false}>
+                <Register />
+              </ProtectedRoute>
+            } />
+            
+            {/* Protected routes - require authentication */}
+            <Route path="/health" element={
+              <ProtectedRoute>
+                <Health />
+              </ProtectedRoute>
+            } />
+            <Route path="/chatbot" element={
+              <ProtectedRoute>
+                <Chatbot />
+              </ProtectedRoute>
+            } />
+            <Route path="/doctor" element={
+              <ProtectedRoute>
+                <Doctor />
+              </ProtectedRoute>
+            } />
+            <Route path="/medicine" element={
+              <ProtectedRoute>
+                <Medicine />
+              </ProtectedRoute>
+            } />
+            <Route path="/eqtest" element={
+              <ProtectedRoute>
+                <EQTest />
+              </ProtectedRoute>
+            } />
+          </Routes>
+        </div>
+      </Router>
+    </AuthProvider>
   );
 }
 

@@ -1,33 +1,28 @@
 """
-OTP model - matches the Node.js OTP model exactly
+OTP model - Firebase Firestore compatible
 """
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional
+from typing import Optional, Dict, Any
 from datetime import datetime, timedelta
-from bson import ObjectId
-
-class PyObjectId(ObjectId):
-    @classmethod
-    def __get_pydantic_core_schema__(cls, source_type, handler):
-        from pydantic_core import core_schema
-        return core_schema.no_info_plain_validator_function(cls.validate)
-
-    @classmethod
-    def validate(cls, v):
-        if not ObjectId.is_valid(v):
-            raise ValueError("Invalid objectid")
-        return ObjectId(v)
+import uuid
 
 class OTP(BaseModel):
-    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     email: EmailStr
     otp: str = Field(..., min_length=6, max_length=6)
     createdAt: datetime = Field(default_factory=datetime.utcnow)
+    expiresAt: datetime = Field(default_factory=lambda: datetime.utcnow() + timedelta(minutes=10))
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for Firestore"""
+        return self.model_dump()
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'OTP':
+        """Create OTP from Firestore document"""
+        return cls(**data)
     
     class Config:
-        populate_by_name = True
-        arbitrary_types_allowed = True
-        json_encoders = {ObjectId: str}
         json_schema_extra = {
             "example": {
                 "email": "user@example.com",

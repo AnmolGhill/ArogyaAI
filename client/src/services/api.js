@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { firebaseAuthService } from './firebase';
 
 // API base configuration
 const API_BASE_URL = 'http://localhost:8000';
@@ -12,12 +13,19 @@ const api = axios.create({
   },
 });
 
-// Request interceptor to add auth token
+// Request interceptor to add Firebase auth token
 api.interceptors.request.use(
-  (config) => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    if (user.token) {
-      config.headers.Authorization = `Bearer ${user.token}`;
+  async (config) => {
+    // Try to get Firebase ID token
+    const tokenResult = await firebaseAuthService.getIdToken();
+    if (tokenResult.success && tokenResult.token) {
+      config.headers.Authorization = `Bearer ${tokenResult.token}`;
+    } else {
+      // Fallback to localStorage token for backward compatibility
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      if (user.token) {
+        config.headers.Authorization = `Bearer ${user.token}`;
+      }
     }
     return config;
   },
@@ -33,6 +41,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       // Token expired or invalid
       localStorage.removeItem('user');
+      firebaseAuthService.signOut();
       window.location.href = '/login';
     }
     return Promise.reject(error);
@@ -50,6 +59,14 @@ export const apiService = {
     login: (credentials) => api.post('/api/auth/login', credentials),
     sendOTP: (email) => api.post('/api/auth/send-otp', { email }),
     verifyOTP: (email, otp) => api.post('/api/auth/verify-otp', { email, otp }),
+  },
+
+  // Firebase Authentication endpoints
+  firebaseAuth: {
+    verifyToken: (firebase_token) => api.post('/api/firebase-auth/verify-token', { firebase_token }),
+    registerWithProfile: (userData, firebase_token) => api.post('/api/firebase-auth/register-with-profile', userData, {
+      headers: { 'X-Firebase-Token': firebase_token }
+    }),
   },
   
   // Health profile endpoints
