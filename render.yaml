@@ -3,7 +3,7 @@ services:
   - type: web
     name: arogya-ai-api
     env: python
-    buildCommand: cd server && pip install -r requirements.txt
+    buildCommand: pip install -r ./server/requirements.txt
     startCommand: cd server && python main.py
     plan: free
     envVars:
