@@ -16,9 +16,11 @@ services:
   - type: web
     name: arogya-ai-frontend
     env: node
-    buildCommand: cd client && npm ci && npm run build
+    buildCommand: cd client && cp .env.production .env && npm ci && npm run build
     startCommand: cd client && npm run preview
     plan: free
     envVars:
       - key: NODE_VERSION
         value: 18
+      - key: VITE_API_BASE_URL
+        value: https://arogya-ai-api.onrender.com
