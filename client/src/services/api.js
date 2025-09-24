@@ -4,6 +4,10 @@ import { firebaseAuthService } from './firebase';
 // API base configuration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
+// Debug logging to see what URL is being used
+console.log('🔗 API Base URL:', API_BASE_URL);
+console.log('🌍 Environment Variables:', import.meta.env);
+
 // Create axios instance with default configuration
 const api = axios.create({
   baseURL: API_BASE_URL,

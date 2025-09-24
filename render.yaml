@@ -16,7 +16,7 @@ services:
   - type: web
     name: arogya-ai-frontend
     env: node
-    buildCommand: cd client && cp .env.production .env && npm ci && npm run build
+    buildCommand: cd client && npm ci && npm run build
     startCommand: cd client && npm run preview
     plan: free
     envVars:
