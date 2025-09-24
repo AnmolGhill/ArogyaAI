@@ -1,8 +1,9 @@
 services:
+  # Backend API Service
   - type: web
     name: arogya-ai-api
     env: python
-    buildCommand: pip install -r server/requirements.txt
+    buildCommand: cd server && pip install -r requirements.txt
     startCommand: cd server && python main.py
     plan: free
     envVars:
@@ -10,3 +11,14 @@ services:
         value: 3.11.9
       - key: PORT
         value: 8000
+  
+  # Frontend Web Service
+  - type: web
+    name: arogya-ai-frontend
+    env: node
+    buildCommand: cd client && npm ci && npm run build
+    startCommand: cd client && npm run preview
+    plan: free
+    envVars:
+      - key: NODE_VERSION
+        value: 18
