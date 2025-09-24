@@ -17,9 +17,9 @@ const About = () => {
       <div className="content" style={{ gridColumn: '1 / -1' }}>
         <div className="hero-section">
           <h2>
-            <FontAwesomeIcon icon={faHeartbeat} /> About HALO
+            <FontAwesomeIcon icon={faHeartbeat} /> About ArogyaAI
           </h2>
-          <p>Healthcare AI Linked Operations - Your Digital Health Companion</p>
+          <p>AI-Powered Healthcare Platform - Your Digital Health Companion</p>
         </div>
 
         <div className="service-descriptions">
@@ -27,7 +27,7 @@ const About = () => {
           <div className="service-description">
             <h3>Our Mission</h3>
             <p>
-              HALO is dedicated to revolutionizing healthcare accessibility through cutting-edge 
+              ArogyaAI is dedicated to revolutionizing healthcare accessibility through cutting-edge 
               artificial intelligence technology. We believe that quality healthcare guidance should 
               be available to everyone, anytime, anywhere. Our platform combines the power of AI 
               with medical expertise to provide reliable, instant health assistance.
@@ -80,9 +80,9 @@ const About = () => {
             </div>
           </div>
 
-          {/* Why Choose HALO */}
+          {/* Why Choose ArogyaAI */}
           <div className="service-description">
-            <h3>Why Choose HALO?</h3>
+            <h3>Why Choose ArogyaAI?</h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginTop: '1rem' }}>
               <div style={{ textAlign: 'center' }}>
                 <FontAwesomeIcon icon={faClock} style={{ fontSize: '2.5rem', color: 'var(--accent)', marginBottom: '0.5rem' }} />
@@ -108,7 +108,7 @@ const About = () => {
           <div className="service-description">
             <h3>Our Technology</h3>
             <p>
-              HALO leverages state-of-the-art artificial intelligence, including advanced natural 
+              ArogyaAI leverages state-of-the-art artificial intelligence, including advanced natural 
               language processing and machine learning algorithms, to provide accurate health 
               assessments. Our AI models are trained on vast medical datasets and continuously 
               updated with the latest medical research and guidelines.
@@ -130,7 +130,7 @@ const About = () => {
           <div className="service-description" style={{ background: '#fef3cd', border: '1px solid #fbbf24' }}>
             <h3 style={{ color: '#92400e' }}>⚠️ Important Disclaimer</h3>
             <p style={{ color: '#92400e', margin: 0 }}>
-              HALO provides health information and guidance for educational purposes only. 
+              ArogyaAI provides health information and guidance for educational purposes only. 
               Our AI-powered tools are designed to supplement, not replace, professional medical advice. 
               Always consult with qualified healthcare providers for diagnosis, treatment, and medical decisions. 
               In case of medical emergencies, contact your local emergency services immediately.
@@ -142,10 +142,10 @@ const About = () => {
             <h3>Get in Touch</h3>
             <p>
               Have questions or feedback? We'd love to hear from you. Our team is committed to 
-              continuously improving HALO to better serve your healthcare needs.
+              continuously improving ArogyaAI to better serve your healthcare needs.
             </p>
             <div style={{ marginTop: '1rem' }}>
-              <p><strong>Email:</strong> support@halo-health.com</p>
+              <p><strong>Email:</strong> support@arogyaai.com</p>
               <p><strong>Phone:</strong> +1 (555) 123-4567</p>
               <p><strong>Address:</strong> 123 Healthcare Ave, Medical District, CA 90210</p>
             </div>

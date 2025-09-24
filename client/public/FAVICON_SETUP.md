@@ -1,7 +1,7 @@
-# HALO Favicon Setup
+# ArogyaAI Favicon Setup
 
 ## Current Status
-✅ **favicon.svg** - Custom HALO healthcare icon with animated elements
+✅ **favicon.svg** - Custom ArogyaAI healthcare icon with animated elements
 ✅ **manifest.json** - PWA manifest for app installation
 ✅ **HTML meta tags** - Complete favicon and SEO setup
 
@@ -31,7 +31,7 @@ favicons favicon.svg --path /
 ```
 
 ## Favicon Features
-- 🎨 **Custom HALO Design**: Healthcare cross with heartbeat line
+- 🎨 **Custom ArogyaAI Design**: Healthcare cross with heartbeat line
 - 🌈 **Gradient Colors**: Matches brand colors (#2C5282 to #4299E1)
 - ✨ **Animated Elements**: Subtle pulse animation for modern feel
 - 📱 **PWA Ready**: Includes manifest.json for app installation

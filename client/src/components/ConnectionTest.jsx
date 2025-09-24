@@ -98,7 +98,7 @@ const ConnectionTest = () => {
           </h4>
           <div style={{ fontSize: '0.8rem', color: '#374151' }}>
             <p style={{ margin: '0.25rem 0' }}>
-              <strong>Service:</strong> {serverData.service || 'HALO Healthcare API'}
+              <strong>Service:</strong> {serverData.service || 'ArogyaAI Healthcare API'}
             </p>
             <p style={{ margin: '0.25rem 0' }}>
               <strong>Status:</strong> {serverData.status || 'Unknown'}

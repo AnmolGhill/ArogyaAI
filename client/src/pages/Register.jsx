@@ -83,7 +83,7 @@ const Register = () => {
     <div className="health-form-container">
       <div className="form-header">
         <h1>
-          <FontAwesomeIcon icon={faUserPlus} /> Register for HALO
+          <FontAwesomeIcon icon={faUserPlus} /> Register for ArogyaAI
         </h1>
         <p>Create your healthcare account</p>
       </div>

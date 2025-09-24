@@ -66,7 +66,7 @@ const Login = () => {
     <div className="health-form-container">
       <div className="form-header">
         <h1>
-          <FontAwesomeIcon icon={faSignInAlt} /> Login to HALO
+          <FontAwesomeIcon icon={faSignInAlt} /> Login to ArogyaAI
         </h1>
         <p>Access your healthcare dashboard</p>
       </div>

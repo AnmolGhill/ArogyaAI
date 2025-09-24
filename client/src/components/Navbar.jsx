@@ -26,10 +26,10 @@ const Navbar = () => {
 
   return (
     <nav className="nav-bar">
-      {/* Left Side: HALO Logo and Title */}
+      {/* Left Side: ArogyaAI Logo and Title */}
       <div className="nav-brand">
         <h1>
-          <FontAwesomeIcon icon={faHeartbeat} /> HALO
+          <FontAwesomeIcon icon={faHeartbeat} /> ArogyaAI
         </h1>
       </div>
 

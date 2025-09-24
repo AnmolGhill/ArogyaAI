@@ -1,6 +1,6 @@
 {
-  "name": "HALO - Healthcare AI Linked Operations",
-  "short_name": "HALO",
+  "name": "ArogyaAI - AI-Powered Healthcare Platform",
+  "short_name": "ArogyaAI",
   "description": "AI-powered healthcare platform for medical assistance and health management",
   "start_url": "/",
   "display": "standalone",
