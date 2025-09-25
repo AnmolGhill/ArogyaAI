@@ -19,6 +19,7 @@ from app.routes.auth_routes import router as auth_router
 from app.routes.firebase_auth_routes import router as firebase_auth_router
 from app.routes.health_routes import router as health_router
 from app.routes.diagnosis_routes import router as diagnosis_router
+from app.routes.profile_routes import router as profile_router
 
 # Configure logging
 logging.basicConfig(
@@ -94,13 +95,23 @@ app = FastAPI(
     }
 )
 
-# CORS middleware - matches Node.js CORS configuration
+# CORS middleware - Enhanced for Google OAuth and development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_origins=["*"],  # Allow all origins for development
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"],
+    allow_headers=[
+        "*",
+        "Authorization",
+        "Content-Type",
+        "X-Requested-With",
+        "Accept",
+        "Origin",
+        "Access-Control-Request-Method",
+        "Access-Control-Request-Headers",
+    ],
+    expose_headers=["*"],
 )
 
 # Include API routes
@@ -108,6 +119,7 @@ app.include_router(auth_router)
 app.include_router(firebase_auth_router)
 app.include_router(health_router)
 app.include_router(diagnosis_router)
+app.include_router(profile_router)
 
 # Health check endpoint
 @app.get(

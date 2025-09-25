@@ -1,9 +1,11 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { LanguageProvider } from './contexts/LanguageContext';
 import FirebaseConfig from './components/FirebaseConfig';
 import ProtectedRoute from './components/ProtectedRoute';
 import Navbar from './components/Navbar';
+import BackendStatus from './components/BackendStatus';
 import Home from './pages/Home';
 import Health from './pages/Health';
 import Chatbot from './pages/Chatbot';
@@ -13,6 +15,7 @@ import EQTest from './pages/EQTest';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import About from './pages/About';
+import Profile from './pages/Profile';
 import './styles/global.css';
 import './styles/health.css';
 import './styles/chatbot.css';
@@ -54,11 +57,13 @@ const Toast = ({ message, type, onClose }) => {
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <div className="App">
-          <FirebaseConfig />
-          <Navbar />
+    <LanguageProvider>
+      <AuthProvider>
+        <Router>
+          <div className="App">
+            <FirebaseConfig />
+            <Navbar />
+            <BackendStatus />
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/about" element={<About />} />
@@ -101,10 +106,16 @@ function App() {
                 <EQTest />
               </ProtectedRoute>
             } />
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            } />
           </Routes>
         </div>
       </Router>
     </AuthProvider>
+    </LanguageProvider>
   );
 }
 

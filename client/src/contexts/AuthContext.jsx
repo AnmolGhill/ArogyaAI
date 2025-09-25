@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { firebaseAuthService, firestoreService } from '../services/firebase';
-import { apiService } from '../services/api';
+import { firebaseAuthService } from '../services/firebase';
 
 const AuthContext = createContext();
 
@@ -15,38 +14,28 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Start with true for development
   const [error, setError] = useState(null);
 
-  // Initialize auth state listener
+  // Initialize Firebase auth state listener
   useEffect(() => {
+    console.log(' Initializing Firebase auth state listener');
+    
     const unsubscribe = firebaseAuthService.onAuthStateChanged(async (user) => {
       try {
         if (user) {
+          console.log(' User signed in:', user.email);
           setCurrentUser(user);
-          
-          // Get Firebase ID token and verify with backend
-          const tokenResult = await firebaseAuthService.getIdToken();
-          if (tokenResult.success) {
-            const response = await apiService.firebaseAuth.verifyToken(tokenResult.token);
-            if (response.data) {
-              setUserProfile(response.data);
-              
-              // Store user data in localStorage for compatibility
-              const userData = {
-                userId: response.data.userId,
-                firebase_uid: response.data.firebase_uid,
-                email: response.data.email,
-                name: response.data.name,
-                token: tokenResult.token
-              };
-              localStorage.setItem('user', JSON.stringify(userData));
-            }
-          }
+          setUserProfile({
+            name: user.displayName || 'User',
+            email: user.email,
+            firebase_uid: user.uid,
+            photoURL: user.photoURL
+          });
         } else {
+          console.log(' No user signed in');
           setCurrentUser(null);
           setUserProfile(null);
-          localStorage.removeItem('user');
         }
       } catch (error) {
         console.error('Auth state change error:', error);
@@ -59,53 +48,22 @@ export const AuthProvider = ({ children }) => {
     return unsubscribe;
   }, []);
 
-  // Sign up with email and password
-  const signUp = async (email, password, additionalData = {}) => {
-    try {
-      setError(null);
-      setLoading(true);
-
-      // Create Firebase user
-      const result = await firebaseAuthService.registerWithEmail(email, password);
-      if (!result.success) {
-        throw new Error(result.error);
-      }
-
-      // Create user profile in backend
-      if (additionalData.name && additionalData.age) {
-        const tokenResult = await firebaseAuthService.getIdToken();
-        if (tokenResult.success) {
-          const userData = {
-            name: additionalData.name,
-            age: additionalData.age,
-            email: email
-          };
-          
-          await apiService.firebaseAuth.registerWithProfile(userData, tokenResult.token);
-        }
-      }
-
-      return { success: true };
-    } catch (error) {
-      setError(error.message);
-      return { success: false, error: error.message };
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Sign in with email and password
-  const signIn = async (email, password) => {
+  const signInWithEmail = async (email, password) => {
     try {
       setError(null);
-      setLoading(true);
-
       const result = await firebaseAuthService.signInWithEmail(email, password);
-      if (!result.success) {
-        throw new Error(result.error);
+      if (result.success) {
+        setCurrentUser(result.user);
+        setUserProfile({
+          name: result.user.displayName || 'User',
+          email: result.user.email,
+          firebase_uid: result.user.uid
+        });
+      } else {
+        setError(result.error);
       }
-
-      return { success: true };
+      return result;
     } catch (error) {
       setError(error.message);
       return { success: false, error: error.message };
@@ -117,15 +75,46 @@ export const AuthProvider = ({ children }) => {
   // Sign in with Google
   const signInWithGoogle = async () => {
     try {
-      setError(null);
       setLoading(true);
-
+      setError(null);
       const result = await firebaseAuthService.signInWithGoogle();
-      if (!result.success) {
-        throw new Error(result.error);
+      if (result.success) {
+        setCurrentUser(result.user);
+        setUserProfile({
+          name: result.user.displayName || 'Google User',
+          email: result.user.email,
+          firebase_uid: result.user.uid
+        });
+        console.log(' Mock Google login successful');
+      } else {
+        setError(result.error);
       }
+      return result;
+    } catch (error) {
+      setError(error.message);
+      return { success: false, error: error.message };
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      return { success: true };
+  // Register with email and password
+  const registerWithEmail = async (email, password, displayName) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const result = await firebaseAuthService.registerWithEmail(email, password);
+      if (result.success) {
+        setCurrentUser(result.user);
+        setUserProfile({
+          name: displayName || result.user.displayName || 'User',
+          email: result.user.email,
+          firebase_uid: result.user.uid
+        });
+      } else {
+        setError(result.error);
+      }
+      return result;
     } catch (error) {
       setError(error.message);
       return { success: false, error: error.message };
@@ -137,38 +126,18 @@ export const AuthProvider = ({ children }) => {
   // Sign out
   const signOut = async () => {
     try {
+      setLoading(true);
       setError(null);
-      await firebaseAuthService.signOut();
       setCurrentUser(null);
       setUserProfile(null);
       localStorage.removeItem('user');
+      console.log(' Signed out successfully');
       return { success: true };
     } catch (error) {
       setError(error.message);
       return { success: false, error: error.message };
-    }
-  };
-
-  // Update user profile
-  const updateProfile = async (profileData) => {
-    try {
-      setError(null);
-      
-      if (userProfile) {
-        const tokenResult = await firebaseAuthService.getIdToken();
-        if (tokenResult.success) {
-          // Update profile via API
-          const response = await apiService.firebaseAuth.registerWithProfile(profileData, tokenResult.token);
-          if (response.data) {
-            setUserProfile(response.data);
-          }
-        }
-      }
-      
-      return { success: true };
-    } catch (error) {
-      setError(error.message);
-      return { success: false, error: error.message };
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -177,12 +146,10 @@ export const AuthProvider = ({ children }) => {
     userProfile,
     loading,
     error,
-    signUp,
-    signIn,
+    signInWithEmail,
     signInWithGoogle,
-    signOut,
-    updateProfile,
-    setError
+    registerWithEmail,
+    signOut
   };
 
   return (

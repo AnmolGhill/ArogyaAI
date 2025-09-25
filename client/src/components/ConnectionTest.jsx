@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheckCircle, faTimesCircle, faSpinner, faServer } from '@fortawesome/free-solid-svg-icons';
 import { testConnection } from '../services/api';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const ConnectionTest = () => {
+  const { t } = useLanguage();
   const [connectionStatus, setConnectionStatus] = useState('testing');
   const [serverData, setServerData] = useState(null);
   const [error, setError] = useState(null);
@@ -20,11 +22,16 @@ const ConnectionTest = () => {
         setServerData(result.data);
       } else {
         setConnectionStatus('failed');
-        setError(result.message);
+        // Provide more helpful error messages
+        if (result.message?.includes('CORS') || result.status === 0) {
+          setError('Backend server is not configured or not running. Firebase authentication will still work.');
+        } else {
+          setError(result.message || 'Backend connection failed');
+        }
       }
     } catch (err) {
       setConnectionStatus('failed');
-      setError('Failed to connect to server');
+      setError('Backend server is not available. App will work with limited functionality.');
     }
   };
 
@@ -50,9 +57,9 @@ const ConnectionTest = () => {
       case 'testing':
         return 'Testing connection...';
       case 'connected':
-        return 'Connected to server';
+        return t('connected');
       case 'failed':
-        return 'Connection failed';
+        return t('connectionFailed');
       default:
         return 'Unknown status';
     }
@@ -70,7 +77,7 @@ const ConnectionTest = () => {
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
         {getStatusIcon()}
         <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '600' }}>
-          Server Connection Status
+          {t('serverConnection')}
         </h3>
       </div>
       
@@ -139,7 +146,7 @@ const ConnectionTest = () => {
         ) : (
           <>
             <FontAwesomeIcon icon={faServer} />
-            Test Connection
+            {t('testConnection')}
           </>
         )}
       </button>

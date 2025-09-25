@@ -2,8 +2,12 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faRobot, faUserMd, faPills, faBrain } from '@fortawesome/free-solid-svg-icons';
+import { faWhatsapp } from '@fortawesome/free-brands-svg-icons';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const Sidebar = () => {
+  const { t } = useLanguage();
+  
   return (
     <div className="sidebar">
       <div className="sidebar-services">
@@ -14,8 +18,8 @@ const Sidebar = () => {
             <FontAwesomeIcon icon={faRobot} />
           </span>
           <div className="service-content">
-            <h3>Healthcare Chatbot</h3>
-            <p>24/7 AI-powered medical assistance</p>
+            <h3>{t('healthcareBot')}</h3>
+            <p>{t('healthcareBotDesc')}</p>
           </div>
         </Link>
 
@@ -25,8 +29,8 @@ const Sidebar = () => {
             <FontAwesomeIcon icon={faUserMd} />
           </span>
           <div className="service-content">
-            <h3>Doctor Preference (Online)</h3>
-            <p>Select your preferred online doctor</p>
+            <h3>{t('doctorPreference')}</h3>
+            <p>{t('doctorPreferenceDesc')}</p>
           </div>
         </Link>
 
@@ -36,8 +40,8 @@ const Sidebar = () => {
             <FontAwesomeIcon icon={faPills} />
           </span>
           <div className="service-content">
-            <h3>Medicine Recognition</h3>
-            <p>Identify medications instantly</p>
+            <h3>{t('medicineRecognition')}</h3>
+            <p>{t('medicineRecognitionDesc')}</p>
           </div>
         </Link>
 
@@ -47,10 +51,25 @@ const Sidebar = () => {
             <FontAwesomeIcon icon={faBrain} />
           </span>
           <div className="service-content">
-            <h3>EQ Assessment</h3>
-            <p>Evaluate emotional intelligence</p>
+            <h3>{t('eqAssessment')}</h3>
+            <p>{t('eqAssessmentDesc')}</p>
           </div>
         </Link>
+
+        {/* 5. WhatsApp Services */}
+        <div 
+          className="service-btn whatsapp-btn" 
+          onClick={() => window.open("https://wa.me/1234567890?text=Hello%20ArogyaAI!%20I%20need%20health%20assistance.", '_blank')}
+          style={{ cursor: 'pointer' }}
+        >
+          <span className="icon">
+            <FontAwesomeIcon icon={faWhatsapp} />
+          </span>
+          <div className="service-content">
+            <h3>{t('whatsappServices')}</h3>
+            <p>{t('whatsappServicesDesc')}</p>
+          </div>
+        </div>
 
       </div>
     </div>

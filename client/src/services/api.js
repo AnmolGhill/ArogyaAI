@@ -1,8 +1,11 @@
 import axios from 'axios';
 import { firebaseAuthService } from './firebase';
+import { developmentConfig } from '../config/development.js';
 
-// API base configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+// API base configuration - use development config if env var not set
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
+                    window.__AROGYAAI_API_BASE_URL__ || 
+                    developmentConfig.API_BASE_URL;
 
 // Debug logging to see what URL is being used
 console.log('🔗 API Base URL:', API_BASE_URL);
@@ -20,16 +23,28 @@ const api = axios.create({
 // Request interceptor to add Firebase auth token
 api.interceptors.request.use(
   async (config) => {
-    // Try to get Firebase ID token
-    const tokenResult = await firebaseAuthService.getIdToken();
-    if (tokenResult.success && tokenResult.token) {
-      config.headers.Authorization = `Bearer ${tokenResult.token}`;
-    } else {
-      // Fallback to localStorage token for backward compatibility
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      if (user.token) {
-        config.headers.Authorization = `Bearer ${user.token}`;
+    // Skip Firebase auth in development mode
+    if (!import.meta.env.PROD || !import.meta.env.VITE_FIREBASE_API_KEY || import.meta.env.VITE_FIREBASE_API_KEY.includes('mock')) {
+      // Development mode - no auth token needed
+      console.log('🔧 Development mode: skipping Firebase auth');
+      return config;
+    }
+
+    try {
+      // Try to get Firebase ID token (only in production with real Firebase config)
+      const tokenResult = await firebaseAuthService.getIdToken();
+      if (tokenResult.success && tokenResult.token) {
+        config.headers.Authorization = `Bearer ${tokenResult.token}`;
+      } else {
+        // Fallback to localStorage token for backward compatibility
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        if (user.token) {
+          config.headers.Authorization = `Bearer ${user.token}`;
+        }
       }
+    } catch (firebaseError) {
+      console.warn('Firebase auth not available, continuing without token:', firebaseError.message);
+      // Continue without auth token - server will use mock user
     }
     return config;
   },
@@ -42,12 +57,31 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Log the error for debugging but don't break the app
+    console.warn('API Request failed:', {
+      url: error.config?.url,
+      method: error.config?.method,
+      status: error.response?.status,
+      message: error.message
+    });
+
     if (error.response?.status === 401) {
-      // Token expired or invalid
-      localStorage.removeItem('user');
-      firebaseAuthService.signOut();
-      window.location.href = '/login';
+      // Token expired or invalid - only redirect if it's a critical auth endpoint
+      const isCriticalAuthEndpoint = error.config?.url?.includes('/auth/') || 
+                                   error.config?.url?.includes('/firebase-auth/verify-token');
+      
+      if (isCriticalAuthEndpoint) {
+        localStorage.removeItem('user');
+        firebaseAuthService.signOut();
+        window.location.href = '/login';
+      }
     }
+    
+    // For CORS or network errors, provide a more user-friendly error
+    if (error.code === 'ERR_NETWORK' || error.message.includes('CORS')) {
+      error.userMessage = 'Backend server is not available. Some features may be limited.';
+    }
+    
     return Promise.reject(error);
   }
 );
@@ -82,6 +116,26 @@ export const apiService = {
   // Diagnosis endpoint
   diagnosis: {
     getDiagnosis: (symptoms) => api.post('/api/get_diagnosis', { symptoms }),
+  },
+
+  // Profile Management endpoints
+  profile: {
+    getCompleteProfile: (userId) => api.get(`/api/profile/complete/${userId}`),
+    updatePersonalInfo: (userId, data) => api.put(`/api/profile/personal/${userId}`, data),
+    updateHealthProfile: (userId, data) => api.put(`/api/profile/health/${userId}`, data),
+    addActivity: (userId, data) => api.post(`/api/profile/activity/${userId}`, data),
+    updateSettings: (userId, data) => api.put(`/api/profile/settings/${userId}`, data),
+    uploadProfilePicture: (userId, file) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      return api.post(`/api/profile/upload-picture/${userId}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+    },
+    addMedicalHistory: (userId, data) => api.post(`/api/profile/medical-history/${userId}`, data),
+    getMedicalHistory: (userId) => api.get(`/api/profile/medical-history/${userId}`),
   },
 };
 

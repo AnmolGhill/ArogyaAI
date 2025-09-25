@@ -69,10 +69,31 @@ body {
 /* === Sidebar Services Navigation === */
 .sidebar {
     position: sticky;
-    top: 5rem;
-    height: calc(100vh - 7rem);
+    top: 6rem;
+    height: calc(100vh - 8rem);
     overflow-y: auto;
     padding-right: 1rem;
+    padding-top: 1rem;
+    border-right: 3px solid var(--primary);
+}
+
+/* Custom Scrollbar for Sidebar */
+.sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+    background: var(--light);
+    border-radius: 3px;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: 3px;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+    background: var(--secondary);
 }
 
 .sidebar-services {
@@ -117,6 +138,27 @@ body {
     width: 100%;
     text-align: left;
     text-decoration: none;
+}
+
+/* === WhatsApp Service Button Specific Styling === */
+.service-btn.whatsapp-btn {
+    border-color: #25D366;
+    background: linear-gradient(135deg, #ffffff 0%, #f0fff4 100%);
+}
+
+.service-btn.whatsapp-btn .icon {
+    color: #25D366 !important;
+}
+
+.service-btn.whatsapp-btn:hover {
+    background: #25D366;
+    border-color: #25D366;
+    transform: translateX(5px);
+}
+
+.service-btn.whatsapp-btn:hover .icon {
+    color: white !important;
+    transform: scale(1.1);
 }
 
 .service-btn:hover {
@@ -266,6 +308,164 @@ body {
     gap: 0.5rem;
 }
 
+/* === WhatsApp Logo Styling === */
+.whatsapp-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 50px;
+    height: 50px;
+    background: #25D366;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(37, 211, 102, 0.3);
+    margin-left: auto;
+    margin-right: 1rem;
+}
+
+.whatsapp-logo:hover {
+    background: #20b858;
+    transform: scale(1.1);
+    box-shadow: 0 4px 15px rgba(37, 211, 102, 0.4);
+}
+
+.whatsapp-logo svg {
+    color: white;
+    font-size: 1.5rem;
+}
+
+/* === Profile Logo Styling === */
+.profile-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 10px rgba(102, 126, 234, 0.3);
+    margin-right: 1rem;
+}
+
+.profile-logo:hover {
+    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+    transform: scale(1.1);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.profile-logo svg {
+    color: white;
+    font-size: 1.5rem;
+}
+
+/* === Language Selector Styling === */
+.language-selector {
+    position: relative;
+    margin-left: 1rem;
+    margin-right: 1rem;
+}
+
+.language-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: white;
+    border: 2px solid var(--primary);
+    border-radius: 8px;
+    padding: 0.6rem 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+    color: var(--primary);
+    font-weight: 500;
+}
+
+.language-btn:hover {
+    background: var(--light);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(44, 82, 130, 0.2);
+}
+
+.language-text {
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.chevron {
+    font-size: 0.8rem;
+    transition: transform 0.3s ease;
+}
+
+.chevron.open {
+    transform: rotate(180deg);
+}
+
+.language-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 2px solid var(--primary);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    overflow: hidden;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.language-option {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-bottom: 1px solid var(--border);
+}
+
+.language-option:last-child {
+    border-bottom: none;
+}
+
+.language-option:hover {
+    background: var(--light);
+    color: var(--primary);
+}
+
+.language-option.selected {
+    background: var(--primary);
+    color: white;
+}
+
+.language-option.selected:hover {
+    background: var(--secondary);
+}
+
+.flag {
+    font-size: 1.2rem;
+}
+
+.language-name {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
 .nav-buttons {
     display: flex;
     gap: 1rem;
@@ -324,17 +524,6 @@ h1, h2 {
     margin-bottom: 2rem;
     position: relative;
     font-weight: 600;
-}
-
-h1::after, h2::after {
-    content: '';
-    position: absolute;
-    bottom: -10px;
-    left: 0;
-    width: 60px;
-    height: 3px;
-    background: var(--accent);
-    border-radius: 2px;
 }
 
 /* === Health Dashboard & Stats === */
@@ -438,31 +627,10 @@ h1::after, h2::after {
     position: relative;
 }
 
-.medical-history-timeline::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    height: 100%;
-    width: 2px;
-    background: var(--border);
-}
-
 .medical-history-event {
-    padding-left: 2rem;
+    padding-left: 0;
     position: relative;
     margin-bottom: 1.5rem;
-}
-
-.event-dot {
-    position: absolute;
-    left: -5px;
-    top: 0;
-    width: 12px;
-    height: 12px;
-    border-radius: 50%; 
-    background: var(--primary);
-    border: 2px solid white;
 }
 
 .event-details {
@@ -564,6 +732,52 @@ h1::after, h2::after {
         justify-content: space-between;
         padding: 18px 16px;
         position: relative;
+    }
+
+    .sidebar {
+        border-right: none;
+    }
+
+    .whatsapp-logo {
+        width: 40px;
+        height: 40px;
+        margin-right: 0.5rem;
+        margin-left: 0.5rem;
+    }
+
+    .whatsapp-logo svg {
+        font-size: 1.2rem;
+    }
+
+    .profile-logo {
+        width: 40px;
+        height: 40px;
+        margin-right: 0.5rem;
+        margin-left: 0.5rem;
+    }
+
+    .profile-logo svg {
+        font-size: 1.2rem;
+    }
+
+    .language-selector {
+        margin-left: 0.5rem;
+        margin-right: 0.5rem;
+    }
+
+    .language-btn {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8rem;
+    }
+
+    .language-text {
+        display: none;
+    }
+
+    .language-dropdown {
+        right: -20px;
+        left: -20px;
+        min-width: 150px;
     }
 
     .nav-right {
