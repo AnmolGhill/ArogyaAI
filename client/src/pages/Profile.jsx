@@ -24,7 +24,7 @@ const Profile = () => {
   const [settings, setSettings] = useState(null);
   const [editForm, setEditForm] = useState({});
 
-  // Create mock user for development if no current user
+  // Create effective user for development or use current user
   const effectiveUser = currentUser || {
     uid: 'dev_user_123',
     email: 'dev@arogyaai.com',
@@ -35,7 +35,7 @@ const Profile = () => {
     }
   };
 
-  // Show login prompt only if explicitly requested (not in development)
+  // Show login prompt only in production if no current user
   if (!currentUser && import.meta.env.PROD) {
     return (
       <div className="profile-container">
@@ -59,7 +59,6 @@ const Profile = () => {
       try {
         // Try server API first
         try {
-          // Use effectiveUser.uid for both real and development users
           const userId = effectiveUser.uid;
           console.log('🔍 Loading profile for user:', userId);
           
@@ -106,7 +105,7 @@ const Profile = () => {
               
               // Initialize edit form with Firebase data
               setEditForm({
-                name: result.data.profile?.name || effectiveUser.displayName || '',
+                name: result.data.profile?.name || currentUser.displayName || '',
                 age: result.data.profile?.age || '',
                 gender: result.data.profile?.gender || '',
                 phone: result.data.profile?.phone || '',
@@ -121,21 +120,20 @@ const Profile = () => {
               
               console.log('✅ Profile data loaded from Firebase');
             } else {
-              console.warn('Firebase fallback failed, using default data');
-              initializeDefaultData();
+              console.warn('Firebase fallback failed, initializing empty data');
+              initializeEmptyData();
             }
           } catch (firebaseError) {
-            console.warn('Firebase not available, using default data');
-            initializeDefaultData();
+            console.warn('Firebase not available, initializing empty data');
+            initializeEmptyData();
           }
         } else {
-          // No Firebase user, use default data for development
-          console.log('🔧 Development mode: using default data');
-          initializeDefaultData();
+          console.warn('No current user available');
+          initializeEmptyData();
         }
       } catch (error) {
         console.error('Error loading user data:', error);
-        initializeDefaultData();
+        initializeEmptyData();
       } finally {
         setLoading(false);
       }
@@ -144,48 +142,36 @@ const Profile = () => {
     loadUserData();
   }, [effectiveUser]);
 
-  const initializeDefaultData = () => {
-    const defaultProfile = {
-      name: effectiveUser?.displayName || 'User',
+  const initializeEmptyData = () => {
+    const emptyProfile = {
+      name: effectiveUser?.displayName || '',
       email: effectiveUser?.email || '',
       photoURL: effectiveUser?.photoURL || null,
-      createdAt: effectiveUser?.metadata?.creationTime
+      createdAt: effectiveUser?.metadata?.creationTime,
+      age: null,
+      gender: '',
+      phone: '',
+      location: '',
+      emergencyContact: ''
     };
     
-    const defaultHealth = {
-      height: "5'8\"",
-      weight: '70 kg',
-      bmi: '22.5',
-      bloodPressure: '120/80',
-      heartRate: '72 bpm',
-      bloodType: 'O+'
+    const emptyHealth = {
+      height: '',
+      weight: '',
+      bmi: '',
+      bloodPressure: '',
+      heartRate: '',
+      bloodType: '',
+      allergies: [],
+      medications: []
     };
 
-    const defaultActivities = [
-      {
-        id: 1,
-        type: 'health_assessment',
-        title: 'Health Assessment Completed',
-        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000) // 2 hours ago
-      },
-      {
-        id: 2,
-        type: 'consultation',
-        title: 'Doctor Consultation Booked',
-        timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000) // 1 day ago
-      },
-      {
-        id: 3,
-        type: 'test',
-        title: 'EQ Test Completed',
-        timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000) // 3 days ago
-      }
-    ];
+    const emptyActivities = [];
 
     const defaultSettings = {
       notifications: {
-        healthReminders: true,
-        appointmentAlerts: true,
+        healthReminders: false,
+        appointmentAlerts: false,
         medicationReminders: false
       },
       privacy: {
@@ -194,13 +180,13 @@ const Profile = () => {
       }
     };
 
-    setProfileData(defaultProfile);
-    setHealthData(defaultHealth);
-    setActivities(defaultActivities);
+    setProfileData(emptyProfile);
+    setHealthData(emptyHealth);
+    setActivities(emptyActivities);
     setSettings(defaultSettings);
     
     setEditForm({
-      name: '',
+      name: effectiveUser?.displayName || '',
       age: '',
       gender: '',
       phone: '',
@@ -270,7 +256,7 @@ const Profile = () => {
           
           // Add activity record
           try {
-            await apiService.profile.addActivity(currentUser.uid, {
+            await apiService.profile.addActivity(effectiveUser.uid, {
               type: 'profile_update',
               title: 'Profile Information Updated',
               description: 'Personal and health information updated'
@@ -317,18 +303,10 @@ const Profile = () => {
           }
         } catch (firebaseError) {
           console.warn('Firebase save failed:', firebaseError);
-          // In development mode, just update local state
-          setProfileData({...profileData, ...profileUpdate});
-          setHealthData({...healthData, ...healthUpdate});
-          setIsEditing(false);
-          alert('Profile updated successfully (development mode)!');
+          throw new Error('Failed to update profile via Firebase');
         }
       } else {
-        // Development mode - just update local state
-        setProfileData({...profileData, ...profileUpdate});
-        setHealthData({...healthData, ...healthUpdate});
-        setIsEditing(false);
-        alert('Profile updated successfully (development mode)!');
+        throw new Error('Failed to update profile via Firebase');
       }
     } catch (error) {
       console.error('Error saving profile:', error);
@@ -339,7 +317,7 @@ const Profile = () => {
   };
 
   const handleSettingChange = async (category, setting, value) => {
-    if (!currentUser) return;
+    if (!effectiveUser) return;
 
     const updatedSettings = {
       ...settings,
@@ -354,12 +332,14 @@ const Profile = () => {
     try {
       // Try server API first
       try {
-        await apiService.profile.updateSettings(currentUser.uid, updatedSettings);
+        await apiService.profile.updateSettings(effectiveUser.uid, updatedSettings);
         console.log('✅ Settings updated via server');
       } catch (serverError) {
         console.warn('Server settings update failed, using Firebase:', serverError.message);
-        await profileService.updateSettings(currentUser.uid, updatedSettings);
-        console.log('✅ Settings updated via Firebase');
+        if (currentUser) {
+          await profileService.updateSettings(currentUser.uid, updatedSettings);
+          console.log('✅ Settings updated via Firebase');
+        }
       }
     } catch (error) {
       console.error('Error updating settings:', error);
@@ -368,7 +348,7 @@ const Profile = () => {
 
   const handleFileUpload = async (event) => {
     const file = event.target.files[0];
-    if (!file || !currentUser) return;
+    if (!file || !effectiveUser) return;
 
     // Validate file size (5MB max)
     if (file.size > 5 * 1024 * 1024) {
@@ -388,7 +368,7 @@ const Profile = () => {
       
       // Try server API first
       try {
-        const serverResult = await apiService.profile.uploadProfilePicture(currentUser.uid, file);
+        const serverResult = await apiService.profile.uploadProfilePicture(effectiveUser.uid, file);
         if (serverResult.data?.success) {
           // Update profile data with new photo URL
           setProfileData(prev => ({
@@ -452,24 +432,6 @@ const Profile = () => {
     return `${diffInMonths} month${diffInMonths > 1 ? 's' : ''} ago`;
   };
 
-  const mockHealthData = {
-    height: '5\'8"',
-    weight: '70 kg',
-    bmi: '22.5',
-    bloodPressure: '120/80',
-    heartRate: '72 bpm',
-    lastCheckup: '2 weeks ago',
-    allergies: ['Peanuts', 'Dust'],
-    medications: ['Vitamin D', 'Omega-3'],
-    emergencyContact: '+91 98765 43210'
-  };
-
-  const mockActivityData = {
-    consultations: 12,
-    testsCompleted: 8,
-    appointmentsBooked: 15,
-    healthScore: 85
-  };
 
   return (
     <div className="profile-container">
@@ -521,15 +483,15 @@ const Profile = () => {
             </p>
             <div className="profile-stats">
               <div className="stat-item">
-                <span className="stat-number">{activities.filter(a => a.type === 'consultation').length || 12}</span>
+                <span className="stat-number">{activities.filter(a => a.type === 'consultation').length || 0}</span>
                 <span className="stat-label">Consultations</span>
               </div>
               <div className="stat-item">
-                <span className="stat-number">{healthData?.healthScore || 85}%</span>
+                <span className="stat-number">{healthData?.healthScore || 0}%</span>
                 <span className="stat-label">Health Score</span>
               </div>
               <div className="stat-item">
-                <span className="stat-number">{activities.filter(a => a.type === 'test').length || 8}</span>
+                <span className="stat-number">{activities.filter(a => a.type === 'test').length || 0}</span>
                 <span className="stat-label">Tests Done</span>
               </div>
             </div>
@@ -847,30 +809,27 @@ const Profile = () => {
                 <div className="health-card full-width">
                   <h3><FontAwesomeIcon icon={faHistory} /> Medical History</h3>
                   <div className="medical-timeline">
-                    <div className="timeline-item">
-                      <div className="timeline-dot"></div>
-                      <div className="timeline-content">
-                        <h4>Regular Checkup</h4>
-                        <p>Complete health examination - All normal</p>
-                        <span className="timeline-date">{mockHealthData.lastCheckup}</span>
+                    {activities && activities.length > 0 ? (
+                      activities.slice(0, 5).map((activity, index) => (
+                        <div key={activity.id || index} className="timeline-item">
+                          <div className="timeline-dot"></div>
+                          <div className="timeline-content">
+                            <h4>{activity.title || 'Medical Activity'}</h4>
+                            <p>{activity.description || 'No description available'}</p>
+                            <span className="timeline-date">{formatTimeAgo(activity.timestamp)}</span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="timeline-item">
+                        <div className="timeline-dot"></div>
+                        <div className="timeline-content">
+                          <h4>No Medical History</h4>
+                          <p>No medical records found. Start by adding your first health activity.</p>
+                          <span className="timeline-date">-</span>
+                        </div>
                       </div>
-                    </div>
-                    <div className="timeline-item">
-                      <div className="timeline-dot"></div>
-                      <div className="timeline-content">
-                        <h4>Blood Test</h4>
-                        <p>Annual blood work - Vitamin D deficiency detected</p>
-                        <span className="timeline-date">1 month ago</span>
-                      </div>
-                    </div>
-                    <div className="timeline-item">
-                      <div className="timeline-dot"></div>
-                      <div className="timeline-content">
-                        <h4>Vaccination</h4>
-                        <p>COVID-19 booster shot administered</p>
-                        <span className="timeline-date">3 months ago</span>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -901,27 +860,30 @@ const Profile = () => {
                 <div className="activity-card">
                   <h3><FontAwesomeIcon icon={faChartLine} /> Recent Activity</h3>
                   <div className="activity-list">
-                    <div className="activity-item">
-                      <FontAwesomeIcon icon={faHeartbeat} />
-                      <div className="activity-details">
-                        <span className="activity-title">Health Assessment Completed</span>
-                        <span className="activity-time">2 hours ago</span>
+                    {activities && activities.length > 0 ? (
+                      activities.slice(0, 5).map((activity, index) => (
+                        <div key={activity.id || index} className="activity-item">
+                          <FontAwesomeIcon icon={
+                            activity.type === 'health_assessment' ? faHeartbeat :
+                            activity.type === 'consultation' ? faUser :
+                            activity.type === 'test' ? faChartLine :
+                            faHeartbeat
+                          } />
+                          <div className="activity-details">
+                            <span className="activity-title">{activity.title || 'Activity'}</span>
+                            <span className="activity-time">{formatTimeAgo(activity.timestamp)}</span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="activity-item">
+                        <FontAwesomeIcon icon={faHeartbeat} />
+                        <div className="activity-details">
+                          <span className="activity-title">No recent activities</span>
+                          <span className="activity-time">Start using ArogyaAI to see your activities here</span>
+                        </div>
                       </div>
-                    </div>
-                    <div className="activity-item">
-                      <FontAwesomeIcon icon={faUser} />
-                      <div className="activity-details">
-                        <span className="activity-title">Doctor Consultation Booked</span>
-                        <span className="activity-time">1 day ago</span>
-                      </div>
-                    </div>
-                    <div className="activity-item">
-                      <FontAwesomeIcon icon={faChartLine} />
-                      <div className="activity-details">
-                        <span className="activity-title">EQ Test Completed</span>
-                        <span className="activity-time">3 days ago</span>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -937,21 +899,33 @@ const Profile = () => {
                     <div className="setting-item">
                       <span>Health Reminders</span>
                       <label className="toggle">
-                        <input type="checkbox" defaultChecked />
+                        <input 
+                          type="checkbox" 
+                          checked={settings?.notifications?.healthReminders || false}
+                          onChange={(e) => handleSettingChange('notifications', 'healthReminders', e.target.checked)}
+                        />
                         <span className="slider"></span>
                       </label>
                     </div>
                     <div className="setting-item">
                       <span>Appointment Alerts</span>
                       <label className="toggle">
-                        <input type="checkbox" defaultChecked />
+                        <input 
+                          type="checkbox" 
+                          checked={settings?.notifications?.appointmentAlerts || false}
+                          onChange={(e) => handleSettingChange('notifications', 'appointmentAlerts', e.target.checked)}
+                        />
                         <span className="slider"></span>
                       </label>
                     </div>
                     <div className="setting-item">
                       <span>Medication Reminders</span>
                       <label className="toggle">
-                        <input type="checkbox" />
+                        <input 
+                          type="checkbox" 
+                          checked={settings?.notifications?.medicationReminders || false}
+                          onChange={(e) => handleSettingChange('notifications', 'medicationReminders', e.target.checked)}
+                        />
                         <span className="slider"></span>
                       </label>
                     </div>
@@ -963,16 +937,24 @@ const Profile = () => {
                   <div className="settings-items">
                     <div className="setting-item">
                       <span>Profile Visibility</span>
-                      <select className="setting-select">
-                        <option>Private</option>
-                        <option>Public</option>
-                        <option>Friends Only</option>
+                      <select 
+                        className="setting-select"
+                        value={settings?.privacy?.profileVisibility || 'private'}
+                        onChange={(e) => handleSettingChange('privacy', 'profileVisibility', e.target.value)}
+                      >
+                        <option value="private">Private</option>
+                        <option value="public">Public</option>
+                        <option value="friends">Friends Only</option>
                       </select>
                     </div>
                     <div className="setting-item">
                       <span>Data Sharing</span>
                       <label className="toggle">
-                        <input type="checkbox" />
+                        <input 
+                          type="checkbox" 
+                          checked={settings?.privacy?.dataSharing || false}
+                          onChange={(e) => handleSettingChange('privacy', 'dataSharing', e.target.checked)}
+                        />
                         <span className="slider"></span>
                       </label>
                     </div>

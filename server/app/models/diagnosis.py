@@ -8,11 +8,13 @@ import uuid
 
 class DiagnosisRequest(BaseModel):
     symptoms: str = Field(..., description="Comma-separated list of symptoms")
+    language: Optional[str] = Field(default="en", description="Language code for response (en, hi, pa, or)")
     
     class Config:
         json_schema_extra = {
             "example": {
-                "symptoms": "headache, fever, cough, fatigue"
+                "symptoms": "headache, fever, cough, fatigue",
+                "language": "en"
             }
         }
 

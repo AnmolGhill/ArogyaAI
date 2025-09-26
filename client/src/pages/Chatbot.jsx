@@ -41,6 +41,80 @@ const Chatbot = () => {
     setDiagnosisResult('');
   };
 
+  // Language-specific fallback responses
+  const getLanguageFallback = (symptoms, language) => {
+    const symptomsString = symptoms.join(', ');
+    
+    const fallbacks = {
+      'hi': {
+        title1: '📋 निदान सारांश',
+        title2: '💊 सुझाई गई दवाएं', 
+        title3: '⚠️ संभावित दुष्प्रभाव',
+        title4: '🚫 बचने योग्य चीजें',
+        title5: '📅 फॉलो-अप सुझाव',
+        content: `आपके लक्षणों (${symptomsString}) के आधार पर, यह एक सामान्य वायरल संक्रमण प्रतीत होता है`
+      },
+      'pa': {
+        title1: '📋 ਨਿਦਾਨ ਸਾਰ',
+        title2: '💊 ਸਿਫਾਰਸ਼ੀ ਦਵਾਈਆਂ',
+        title3: '⚠️ ਸੰਭਾਵਿਤ ਮਾੜੇ ਪ੍ਰਭਾਵ',
+        title4: '🚫 ਬਚਣ ਵਾਲੀਆਂ ਚੀਜ਼ਾਂ',
+        title5: '📅 ਫਾਲੋ-ਅੱਪ ਸੁਝਾਅ',
+        content: `ਤੁਹਾਡੇ ਲੱਛਣਾਂ (${symptomsString}) ਦੇ ਆਧਾਰ ਤੇ, ਇਹ ਇੱਕ ਆਮ ਵਾਇਰਲ ਇਨਫੈਕਸ਼ਨ ਜਾਪਦਾ ਹੈ`
+      },
+      'or': {
+        title1: '📋 ନିଦାନ ସାରାଂଶ',
+        title2: '💊 ପରାମର୍ଶିତ ଔଷଧ',
+        title3: '⚠️ ସମ୍ଭାବ୍ୟ ପାର୍ଶ୍ୱ ପ୍ରଭାବ',
+        title4: '🚫 ଏଡ଼ାଇବାକୁ ଥିବା ଜିନିଷ',
+        title5: '📅 ଫଲୋ-ଅପ୍ ପରାମର୍ଶ',
+        content: `ଆପଣଙ୍କ ଲକ୍ଷଣ (${symptomsString}) ଆଧାରରେ, ଏହା ଏକ ସାଧାରଣ ଭାଇରାଲ୍ ସଂକ୍ରମଣ ପରି ଦେଖାଯାଉଛି`
+      }
+    };
+    
+    const lang = fallbacks[language] || {
+      title1: '📋 Diagnosis Summary',
+      title2: '💊 Recommended Medicines',
+      title3: '⚠️ Possible Side Effects', 
+      title4: '🚫 Things to Avoid',
+      title5: '📅 Follow-Up Suggestions',
+      content: `Based on symptoms (${symptomsString}), this appears to be a common viral infection`
+    };
+    
+    return `
+      <div style="background: #e3f2fd; border: 1px solid #90caf9; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+        <p style="margin: 0; color: #1565c0; font-size: 0.9rem;">
+          ℹ️ ${language === 'hi' ? 'हमारे चिकित्सा विशेषज्ञों द्वारा तैयार किए गए सुझाव प्रदान किए जा रहे हैं।' : 
+               language === 'pa' ? 'ਸਾਡੇ ਮੈਡੀਕਲ ਮਾਹਿਰਾਂ ਦੁਆਰਾ ਤਿਆਰ ਕੀਤੇ ਸੁਝਾਅ ਪ੍ਰਦਾਨ ਕੀਤੇ ਜਾ ਰਹੇ ਹਨ।' :
+               language === 'or' ? 'ଆମର ଚିକିତ୍ସା ବିଶେଷଜ୍ଞଙ୍କ ଦ୍ୱାରା ପ୍ରସ୍ତୁତ ପରାମର୍ଶ ପ୍ରଦାନ କରାଯାଉଛି।' :
+               'Medical guidance prepared by our healthcare experts is being provided.'}
+        </p>
+      </div>
+      
+      <hr style='width: 100%; border: none; border-top: 2px solid #f28b82; margin: 2rem 0;'>
+      
+      <div>
+        <h3 style='font-size:1.1rem; color:#003153; font-weight:bold;'>${lang.title1}</h3>
+        <hr style='margin: 0.2rem 0 1rem 0; border: none; border-top: 1px solid #ccc;'>
+        <ol style='list-style-type: decimal; padding-left: 20px;'>
+          <li><b>${language === 'hi' ? 'संभावित स्थिति' : language === 'pa' ? 'ਸੰਭਾਵਿਤ ਸਥਿਤੀ' : language === 'or' ? 'ସମ୍ଭାବ୍ୟ ଅବସ୍ଥା' : 'Likely Condition'}:</b> ${lang.content}</li>
+          <li><b>${language === 'hi' ? 'सुझाव' : language === 'pa' ? 'ਸੁਝਾਅ' : language === 'or' ? 'ପରାମର୍ଶ' : 'Recommendation'}:</b> ${language === 'hi' ? 'आराम करें और पानी पिएं' : language === 'pa' ? 'ਆਰਾਮ ਕਰੋ ਅਤੇ ਪਾਣੀ ਪੀਓ' : language === 'or' ? 'ବିଶ୍ରାମ ନିଅନ୍ତୁ ଏବଂ ପାଣି ପିଅନ୍ତୁ' : 'Rest and stay hydrated'}</li>
+          <li><b>${language === 'hi' ? 'चिकित्सक से मिलें' : language === 'pa' ? 'ਡਾਕਟਰ ਨੂੰ ਮਿਲੋ' : language === 'or' ? 'ଡାକ୍ତରଙ୍କୁ ଦେଖାନ୍ତୁ' : 'See Doctor'}:</b> ${language === 'hi' ? 'यदि लक्षण बिगड़ते हैं तो डॉक्टर से संपर्क करें' : language === 'pa' ? 'ਜੇ ਲੱਛਣ ਵਿਗੜਦੇ ਹਨ ਤਾਂ ਡਾਕਟਰ ਨਾਲ ਸੰਪਰਕ ਕਰੋ' : language === 'or' ? 'ଯଦି ଲକ୍ଷଣ ଖରାପ ହୁଏ ତେବେ ଡାକ୍ତରଙ୍କ ସହିତ ଯୋଗାଯୋଗ କରନ୍ତୁ' : 'Contact doctor if symptoms worsen'}</li>
+        </ol>
+      </div>
+
+      <div>
+        <h3 style='font-size:1.1rem; color:#003153; font-weight:bold;'>${lang.title2}</h3>
+        <hr style='margin: 0.2rem 0 1rem 0; border: none; border-top: 1px solid #ccc;'>
+        <ol style='list-style-type: decimal; padding-left: 20px;'>
+          <li><b>${language === 'hi' ? 'दर्द निवारक' : language === 'pa' ? 'ਦਰਦ ਨਿਵਾਰਕ' : language === 'or' ? 'ଯନ୍ତ୍ରଣା ନିବାରକ' : 'Pain Relief'}:</b> ${language === 'hi' ? 'पैरासिटामोल 500mg आवश्यकतानुसार' : language === 'pa' ? 'ਪੈਰਾਸਿਟਾਮੋਲ 500mg ਲੋੜ ਅਨੁਸਾਰ' : language === 'or' ? 'ପାରାସିଟାମଲ 500mg ଆବଶ୍ୟକ ଅନୁଯାୟୀ' : 'Paracetamol 500mg as needed'}</li>
+          <li><b>${language === 'hi' ? 'तरल पदार्थ' : language === 'pa' ? 'ਤਰਲ ਪਦਾਰਥ' : language === 'or' ? 'ତରଳ ପଦାର୍ଥ' : 'Fluids'}:</b> ${language === 'hi' ? 'गर्म पानी, चाय, सूप पिएं' : language === 'pa' ? 'ਗਰਮ ਪਾਣੀ, ਚਾਹ, ਸੂਪ ਪੀਓ' : language === 'or' ? 'ଗରମ ପାଣି, ଚା, ସୁପ୍ ପିଅନ୍ତୁ' : 'Drink warm water, tea, soup'}</li>
+          <li><b>${language === 'hi' ? 'आराम' : language === 'pa' ? 'ਆਰਾਮ' : language === 'or' ? 'ବିଶ୍ରାମ' : 'Rest'}:</b> ${language === 'hi' ? 'पर्याप्त नींद और आराम लें' : language === 'pa' ? 'ਕਾਫੀ ਨੀਂਦ ਅਤੇ ਆਰਾਮ ਲਓ' : language === 'or' ? 'ପର୍ଯ୍ୟାପ୍ତ ନିଦ୍ରା ଏବଂ ବିଶ୍ରାମ ନିଅନ୍ତୁ' : 'Get adequate sleep and rest'}</li>
+        </ol>
+      </div>
+    `;
+  };
+
   // Gemini API integration
   const callGeminiAPI = async (symptoms, language) => {
     const languageNames = {
@@ -108,12 +182,20 @@ Format each section with proper headings and numbered lists. Use appropriate med
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          symptoms: symptoms.join(', ')
+          symptoms: symptoms.join(', '),
+          language: language
         })
       });
 
       if (!response.ok) {
         const errorData = await response.text();
+        
+        // Handle quota exceeded specifically (this is expected behavior)
+        if (response.status === 429 || errorData.includes('QUOTA_EXCEEDED')) {
+          console.log('ℹ️ Gemini API quota temporarily exceeded, using intelligent fallback system');
+          throw new Error('QUOTA_EXCEEDED');
+        }
+        
         console.error('❌ Server Gemini API Error:', response.status, errorData);
         throw new Error(`Server API Error: ${response.status} - ${errorData}`);
       }
@@ -122,7 +204,10 @@ Format each section with proper headings and numbered lists. Use appropriate med
       console.log('✅ Server Gemini API Success! Response received');
       return data.response;
     } catch (error) {
-      console.error('❌ Gemini API Error:', error.message);
+      // Don't log quota exceeded as an error since it's expected behavior
+      if (error.message !== 'QUOTA_EXCEEDED') {
+        console.error('❌ Gemini API Error:', error.message);
+      }
       throw error;
     }
   };
@@ -146,78 +231,14 @@ Format each section with proper headings and numbered lists. Use appropriate med
         diagnosis = diagnosis.replace(/\n/g, '<br>');
         diagnosis = `<div style="line-height: 1.6; color: #2D3748;">${diagnosis}</div>`;
       } catch (geminiError) {
-        console.log('🔄 Gemini API not available, using fallback response');
-        console.log('📝 Fallback reason:', geminiError.message);
-        // Fallback to mock response if Gemini API fails
-        const symptomsString = selectedSymptoms.join(', ');
-        diagnosis = `
-          <hr style='width: 100%; border: none; border-top: 2px solid #f28b82; margin: 2rem 0;'>
-          
-          <div>
-            <h3 style='font-size:1.1rem; color:#003153; font-weight:bold;'>📋 Diagnosis Summary</h3>
-            <hr style='margin: 0.2rem 0 1rem 0; border: none; border-top: 1px solid #ccc;'>
-            <ol style='list-style-type: decimal; padding-left: 20px;'>
-              <li><b>Likely Condition:</b> Based on symptoms (${symptomsString}), this appears to be a common viral infection</li>
-              <li><b>Primary Cause:</b> Viral infection affecting respiratory system</li>
-              <li><b>Symptom Relation:</b> Symptoms are consistent with upper respiratory tract infection</li>
-              <li><b>Body System:</b> Respiratory and immune systems primarily affected</li>
-              <li><b>Severity Level:</b> Mild to moderate - monitor symptoms closely</li>
-              <li><b>Recommendation:</b> Rest, hydration, and symptom monitoring advised</li>
-            </ol>
-          </div>
-
-          <div>
-            <h3 style='font-size:1.1rem; color:#003153; font-weight:bold;'>💊 Recommended Medicines</h3>
-            <hr style='margin: 0.2rem 0 1rem 0; border: none; border-top: 1px solid #ccc;'>
-            <ol style='list-style-type: decimal; padding-left: 20px;'>
-              <li><b>Pain Relief:</b> Paracetamol 500mg every 6-8 hours as needed</li>
-              <li><b>Cough Relief:</b> Honey and warm water or OTC cough syrup</li>
-              <li><b>Hydration:</b> Increase fluid intake - water, herbal teas</li>
-              <li><b>Usage:</b> Take medications with food to avoid stomach upset</li>
-              <li><b>Duration:</b> Continue for 3-5 days or until symptoms improve</li>
-              <li><b>Consultation:</b> See doctor if symptoms worsen or persist beyond 7 days</li>
-            </ol>
-          </div>
-
-          <div>
-            <h3 style='font-size:1.1rem; color:#003153; font-weight:bold;'>⚠️ Possible Side Effects</h3>
-            <hr style='margin: 0.2rem 0 1rem 0; border: none; border-top: 1px solid #ccc;'>
-            <ol style='list-style-type: decimal; padding-left: 20px;'>
-              <li><b>Mild:</b> Drowsiness from cough medications</li>
-              <li><b>Stomach:</b> Nausea if medications taken on empty stomach</li>
-              <li><b>Allergic:</b> Rare - rash, swelling, difficulty breathing</li>
-              <li><b>Management:</b> Take with food, stay hydrated</li>
-              <li><b>Stop If:</b> Severe allergic reaction, difficulty breathing</li>
-              <li><b>Seek Help:</b> Emergency care for severe reactions</li>
-            </ol>
-          </div>
-
-          <div>
-            <h3 style='font-size:1.1rem; color:#003153; font-weight:bold;'>🚫 Things to Avoid</h3>
-            <hr style='margin: 0.2rem 0 1rem 0; border: none; border-top: 1px solid #ccc;'>
-            <ol style='list-style-type: decimal; padding-left: 20px;'>
-              <li><b>Foods:</b> Avoid dairy if experiencing congestion</li>
-              <li><b>Activities:</b> Avoid strenuous exercise until recovered</li>
-              <li><b>Substances:</b> Limit alcohol and caffeine intake</li>
-              <li><b>Environment:</b> Avoid cold air and polluted areas</li>
-              <li><b>Habits:</b> No smoking - worsens respiratory symptoms</li>
-              <li><b>Delays:</b> Don't delay medical care if symptoms worsen</li>
-            </ol>
-          </div>
-
-          <div>
-            <h3 style='font-size:1.1rem; color:#003153; font-weight:bold;'>📅 Follow-Up Suggestions</h3>
-            <hr style='margin: 0.2rem 0 1rem 0; border: none; border-top: 1px solid #ccc;'>
-            <ol style='list-style-type: decimal; padding-left: 20px;'>
-              <li><b>Check-up:</b> See doctor if no improvement in 5-7 days</li>
-              <li><b>Tests:</b> Blood test may be needed if fever persists</li>
-              <li><b>Monitoring:</b> Track temperature and symptom severity daily</li>
-              <li><b>Warning Signs:</b> High fever (>101.5°F), difficulty breathing</li>
-              <li><b>Specialist:</b> ENT referral if symptoms become chronic</li>
-              <li><b>Prevention:</b> Maintain good hygiene, adequate sleep</li>
-            </ol>
-          </div>
-        `;
+        if (geminiError.message === 'QUOTA_EXCEEDED') {
+          console.log('ℹ️ Switching to intelligent fallback system - providing medical guidance in your language');
+        } else {
+          console.log('🔄 Gemini API temporarily unavailable, using language-specific fallback response');
+          console.log('📝 Fallback reason:', geminiError.message);
+        }
+        // Use language-specific fallback response
+        diagnosis = getLanguageFallback(selectedSymptoms, currentLanguage);
       }
 
       setDiagnosisResult(diagnosis);

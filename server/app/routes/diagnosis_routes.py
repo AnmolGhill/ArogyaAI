@@ -21,8 +21,8 @@ async def get_diagnosis(request: DiagnosisRequest):
                 detail="No symptoms provided"
             )
         
-        # Get diagnosis from Gemini AI
-        diagnosis_html = await gemini_service.get_diagnosis(request.symptoms)
+        # Get diagnosis from Gemini AI with language support
+        diagnosis_html = await gemini_service.get_diagnosis(request.symptoms, request.language or "en")
         
         if not diagnosis_html:
             raise HTTPException(
@@ -37,11 +37,21 @@ async def get_diagnosis(request: DiagnosisRequest):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"❌ Gemini API error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get diagnosis"
-        )
+        error_str = str(e)
+        
+        # Handle quota exceeded specifically
+        if "QUOTA_EXCEEDED" in error_str:
+            logger.info(f"ℹ️ Switching to intelligent fallback system for user request")
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="QUOTA_EXCEEDED"
+            )
+        else:
+            logger.error(f"❌ Gemini API error: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to get diagnosis"
+            )
 
 @router.post("/test-ai")
 async def test_ai():

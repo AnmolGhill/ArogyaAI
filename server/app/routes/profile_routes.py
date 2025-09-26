@@ -21,14 +21,33 @@ router = APIRouter(prefix="/api/profile", tags=["👤 Profile Management"])
 # Dependency to get current user from Firebase token
 async def get_current_user(authorization: str = Header(None)):
     """Extract and verify Firebase token from Authorization header"""
-    # For development, make auth optional and return mock user if no token
+    # Check if we're in development mode (no authorization header)
     if not authorization or not authorization.startswith("Bearer "):
-        logger.warning("No authorization header provided, using mock user for development")
-        return {
-            'uid': 'mock_user_id',
-            'email': 'mock@example.com',
-            'name': 'Mock User'
-        }
+        # In development, check if Firebase is properly configured
+        try:
+            # Try to access Firebase to see if it's configured
+            db = firebase_service.db
+            if db is None:
+                # Firebase not configured, allow development access
+                logger.warning("Firebase not configured, allowing development access")
+                return {
+                    'uid': 'dev_user_123',
+                    'email': 'dev@arogyaai.com',
+                    'name': 'Development User'
+                }
+        except Exception as e:
+            logger.warning(f"Firebase not available: {e}, allowing development access")
+            return {
+                'uid': 'dev_user_123',
+                'email': 'dev@arogyaai.com',
+                'name': 'Development User'
+            }
+        
+        # Firebase is configured but no token provided
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authorization header required"
+        )
     
     token = authorization.split(" ")[1]
     
@@ -38,22 +57,18 @@ async def get_current_user(authorization: str = Header(None)):
         decoded_token = await service.verify_firebase_token(token)
         
         if not decoded_token:
-            logger.warning("Invalid token, using mock user for development")
-            return {
-                'uid': 'mock_user_id',
-                'email': 'mock@example.com',
-                'name': 'Mock User'
-            }
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired token"
+            )
         
         return decoded_token
     except Exception as e:
         logger.error(f"Token verification error: {e}")
-        # Return mock user for development
-        return {
-            'uid': 'mock_user_id',
-            'email': 'mock@example.com',
-            'name': 'Mock User'
-        }
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token verification failed"
+        )
 
 @router.get(
     "/complete/{user_id}",
@@ -75,16 +90,20 @@ async def get_complete_profile(
     """
     try:
         # Verify user access (users can only access their own profile)
-        # For development, allow access if using mock user
-        if current_user.get('uid') != user_id and current_user.get('uid') != 'mock_user_id':
+        # Allow development user to access any profile for testing
+        if current_user.get('uid') != user_id and current_user.get('uid') != 'dev_user_123':
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied"
             )
         
-        # Try to get data from Firebase, but provide mock data if Firebase is not configured
+        # Get data from Firebase with error handling
         try:
             db = firebase_service.db
+            
+            if db is None:
+                # Firebase not configured, return empty data
+                raise Exception("Firebase not configured")
             
             # Get user profile
             user_ref = db.collection('users').document(user_id)
@@ -93,15 +112,15 @@ async def get_complete_profile(
             if user_doc.exists:
                 profile_data = user_doc.to_dict()
             else:
-                # Create mock profile data
+                # Return empty profile data if user doesn't exist
                 profile_data = {
-                    'name': current_user.get('name', 'Test User'),
-                    'email': current_user.get('email', 'test@example.com'),
-                    'age': 25,
-                    'gender': 'Not specified',
-                    'phone': '+1 234 567 8900',
-                    'location': 'Test City, Country',
-                    'emergencyContact': '+1 234 567 8901',
+                    'name': current_user.get('name', ''),
+                    'email': current_user.get('email', ''),
+                    'age': None,
+                    'gender': '',
+                    'phone': '',
+                    'location': '',
+                    'emergencyContact': '',
                     'photoURL': None,
                     'createdAt': datetime.utcnow(),
                     'updatedAt': datetime.utcnow()
@@ -111,51 +130,33 @@ async def get_complete_profile(
             health_ref = db.collection('healthProfiles').document(user_id)
             health_doc = health_ref.get()
             health_data = health_doc.to_dict() if health_doc.exists else {
-                'height': "5'8\"",
-                'weight': '70 kg',
-                'bmi': '22.5',
-                'bloodType': 'O+',
-                'bloodPressure': '120/80',
-                'heartRate': '72 bpm',
-                'allergies': ['None known'],
-                'medications': ['Multivitamin'],
+                'height': '',
+                'weight': '',
+                'bmi': '',
+                'bloodType': '',
+                'bloodPressure': '',
+                'heartRate': '',
+                'allergies': [],
+                'medications': [],
                 'updatedAt': datetime.utcnow()
             }
             
             # Get recent activities (last 10)
-            try:
-                activities_ref = db.collection('userActivity').document(user_id).collection('activities')
-                activities_query = activities_ref.order_by('timestamp', direction='DESCENDING').limit(10)
-                activities_docs = activities_query.stream()
-                activities = [
-                    {**doc.to_dict(), 'id': doc.id} 
-                    for doc in activities_docs
-                ]
-            except:
-                activities = [
-                    {
-                        'id': '1',
-                        'type': 'health_assessment',
-                        'title': 'Health Assessment Completed',
-                        'description': 'Completed comprehensive health assessment',
-                        'timestamp': datetime.utcnow()
-                    },
-                    {
-                        'id': '2',
-                        'type': 'consultation',
-                        'title': 'Doctor Consultation Scheduled',
-                        'description': 'Scheduled consultation with Dr. Smith',
-                        'timestamp': datetime.utcnow()
-                    }
-                ]
+            activities_ref = db.collection('userActivity').document(user_id).collection('activities')
+            activities_query = activities_ref.order_by('timestamp', direction='DESCENDING').limit(10)
+            activities_docs = activities_query.stream()
+            activities = [
+                {**doc.to_dict(), 'id': doc.id} 
+                for doc in activities_docs
+            ]
             
             # Get user settings
             settings_ref = db.collection('userSettings').document(user_id)
             settings_doc = settings_ref.get()
             settings_data = settings_doc.to_dict() if settings_doc.exists else {
                 'notifications': {
-                    'healthReminders': True,
-                    'appointmentAlerts': True,
+                    'healthReminders': False,
+                    'appointmentAlerts': False,
                     'medicationReminders': False
                 },
                 'privacy': {
@@ -165,76 +166,48 @@ async def get_complete_profile(
             }
             
             # Get medical history
-            try:
-                history_ref = db.collection('medicalHistory').document(user_id).collection('entries')
-                history_query = history_ref.order_by('timestamp', direction='DESCENDING').limit(5)
-                history_docs = history_query.stream()
-                medical_history = [
-                    {**doc.to_dict(), 'id': doc.id} 
-                    for doc in history_docs
-                ]
-            except:
-                medical_history = [
-                    {
-                        'id': '1',
-                        'type': 'checkup',
-                        'title': 'Annual Health Checkup',
-                        'description': 'Routine annual health examination',
-                        'doctor': 'Dr. Johnson',
-                        'location': 'City Medical Center',
-                        'timestamp': datetime.utcnow()
-                    }
-                ]
-                
+            history_ref = db.collection('medicalHistory').document(user_id).collection('entries')
+            history_query = history_ref.order_by('timestamp', direction='DESCENDING').limit(5)
+            history_docs = history_query.stream()
+            medical_history = [
+                {**doc.to_dict(), 'id': doc.id} 
+                for doc in history_docs
+            ]
+            
         except Exception as firebase_error:
-            logger.warning(f"Firebase not configured or error: {firebase_error}")
-            # Return complete mock data when Firebase is not available
+            logger.warning(f"Firebase error: {firebase_error}, returning empty data for development")
+            # Return empty data structure for development
             profile_data = {
-                'name': current_user.get('name', 'Test User'),
-                'email': current_user.get('email', 'test@example.com'),
-                'age': 25,
-                'gender': 'Not specified',
-                'phone': '+1 234 567 8900',
-                'location': 'Test City, Country',
-                'emergencyContact': '+1 234 567 8901',
+                'name': current_user.get('name', ''),
+                'email': current_user.get('email', ''),
+                'age': None,
+                'gender': '',
+                'phone': '',
+                'location': '',
+                'emergencyContact': '',
                 'photoURL': None,
                 'createdAt': datetime.utcnow(),
                 'updatedAt': datetime.utcnow()
             }
             
             health_data = {
-                'height': "5'8\"",
-                'weight': '70 kg',
-                'bmi': '22.5',
-                'bloodType': 'O+',
-                'bloodPressure': '120/80',
-                'heartRate': '72 bpm',
-                'allergies': ['None known'],
-                'medications': ['Multivitamin'],
+                'height': '',
+                'weight': '',
+                'bmi': '',
+                'bloodType': '',
+                'bloodPressure': '',
+                'heartRate': '',
+                'allergies': [],
+                'medications': [],
                 'updatedAt': datetime.utcnow()
             }
             
-            activities = [
-                {
-                    'id': '1',
-                    'type': 'health_assessment',
-                    'title': 'Health Assessment Completed',
-                    'description': 'Completed comprehensive health assessment',
-                    'timestamp': datetime.utcnow()
-                },
-                {
-                    'id': '2',
-                    'type': 'consultation',
-                    'title': 'Doctor Consultation Scheduled',
-                    'description': 'Scheduled consultation with Dr. Smith',
-                    'timestamp': datetime.utcnow()
-                }
-            ]
+            activities = []
             
             settings_data = {
                 'notifications': {
-                    'healthReminders': True,
-                    'appointmentAlerts': True,
+                    'healthReminders': False,
+                    'appointmentAlerts': False,
                     'medicationReminders': False
                 },
                 'privacy': {
@@ -243,17 +216,7 @@ async def get_complete_profile(
                 }
             }
             
-            medical_history = [
-                {
-                    'id': '1',
-                    'type': 'checkup',
-                    'title': 'Annual Health Checkup',
-                    'description': 'Routine annual health examination',
-                    'doctor': 'Dr. Johnson',
-                    'location': 'City Medical Center',
-                    'timestamp': datetime.utcnow()
-                }
-            ]
+            medical_history = []
         
         return {
             "success": True,
@@ -297,8 +260,8 @@ async def update_personal_info(
     """
     try:
         # Verify user access
-        # For development, allow access if using mock user
-        if current_user.get('uid') != user_id and current_user.get('uid') != 'mock_user_id':
+        # Allow development user to access any profile for testing
+        if current_user.get('uid') != user_id and current_user.get('uid') != 'dev_user_123':
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied"
@@ -306,6 +269,9 @@ async def update_personal_info(
         
         try:
             db = firebase_service.db
+            if db is None:
+                raise Exception("Firebase not configured")
+                
             user_ref = db.collection('users').document(user_id)
             
             # Update user document
@@ -314,9 +280,9 @@ async def update_personal_info(
             
             logger.info(f"Personal info updated for user: {user_id}")
         except Exception as firebase_error:
-            logger.warning(f"Firebase update failed, using mock storage: {firebase_error}")
-            # In development, just log the update (you could store in memory/cache here)
-            logger.info(f"Mock update for user {user_id}: {update_data}")
+            logger.warning(f"Firebase update failed: {firebase_error}, simulating success for development")
+            # In development mode, just log the update
+            logger.info(f"Development mode update for user {user_id}: {update_data}")
         
         return {"success": True, "message": "Personal information updated successfully"}
         
@@ -350,8 +316,8 @@ async def update_health_profile(
     """
     try:
         # Verify user access
-        # For development, allow access if using mock user
-        if current_user.get('uid') != user_id and current_user.get('uid') != 'mock_user_id':
+        # Allow development user to access any profile for testing
+        if current_user.get('uid') != user_id and current_user.get('uid') != 'dev_user_123':
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied"
@@ -359,6 +325,9 @@ async def update_health_profile(
         
         try:
             db = firebase_service.db
+            if db is None:
+                raise Exception("Firebase not configured")
+                
             health_ref = db.collection('healthProfiles').document(user_id)
             
             # Update health document
@@ -367,9 +336,9 @@ async def update_health_profile(
             
             logger.info(f"Health profile updated for user: {user_id}")
         except Exception as firebase_error:
-            logger.warning(f"Firebase health update failed, using mock storage: {firebase_error}")
-            # In development, just log the update
-            logger.info(f"Mock health update for user {user_id}: {health_data}")
+            logger.warning(f"Firebase health update failed: {firebase_error}, simulating success for development")
+            # In development mode, just log the update
+            logger.info(f"Development mode health update for user {user_id}: {health_data}")
         
         return {"success": True, "message": "Health profile updated successfully"}
         
@@ -403,8 +372,8 @@ async def add_activity_record(
     """
     try:
         # Verify user access
-        # For development, allow access if using mock user
-        if current_user.get('uid') != user_id and current_user.get('uid') != 'mock_user_id':
+        # Allow development user to access any profile for testing
+        if current_user.get('uid') != user_id and current_user.get('uid') != 'dev_user_123':
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied"
@@ -452,8 +421,8 @@ async def update_user_settings(
     """
     try:
         # Verify user access
-        # For development, allow access if using mock user
-        if current_user.get('uid') != user_id and current_user.get('uid') != 'mock_user_id':
+        # Allow development user to access any profile for testing
+        if current_user.get('uid') != user_id and current_user.get('uid') != 'dev_user_123':
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied"
@@ -500,8 +469,8 @@ async def upload_profile_picture(
     """
     try:
         # Verify user access
-        # For development, allow access if using mock user
-        if current_user.get('uid') != user_id and current_user.get('uid') != 'mock_user_id':
+        # Allow development user to access any profile for testing
+        if current_user.get('uid') != user_id and current_user.get('uid') != 'dev_user_123':
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied"
@@ -596,8 +565,8 @@ async def add_medical_history(
     """
     try:
         # Verify user access
-        # For development, allow access if using mock user
-        if current_user.get('uid') != user_id and current_user.get('uid') != 'mock_user_id':
+        # Allow development user to access any profile for testing
+        if current_user.get('uid') != user_id and current_user.get('uid') != 'dev_user_123':
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied"
@@ -644,8 +613,8 @@ async def get_medical_history(
     """
     try:
         # Verify user access
-        # For development, allow access if using mock user
-        if current_user.get('uid') != user_id and current_user.get('uid') != 'mock_user_id':
+        # Allow development user to access any profile for testing
+        if current_user.get('uid') != user_id and current_user.get('uid') != 'dev_user_123':
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied"
