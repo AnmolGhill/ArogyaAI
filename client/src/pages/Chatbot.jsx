@@ -226,10 +226,23 @@ Format each section with proper headings and numbered lists. Use appropriate med
       let diagnosis;
       try {
         diagnosis = await callGeminiAPI(selectedSymptoms, currentLanguage);
-        // Format the Gemini response for HTML display
-        diagnosis = diagnosis.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-        diagnosis = diagnosis.replace(/\n/g, '<br>');
-        diagnosis = `<div style="line-height: 1.6; color: #2D3748;">${diagnosis}</div>`;
+        
+        // Clean up the Gemini response - remove any markdown artifacts
+        diagnosis = diagnosis.replace(/```html\s*/g, '');
+        diagnosis = diagnosis.replace(/```\s*/g, '');
+        diagnosis = diagnosis.replace(/^\s*"html\s*/g, '');
+        diagnosis = diagnosis.replace(/"\s*$/g, '');
+        
+        // Ensure proper HTML structure
+        if (!diagnosis.includes('<div>') && !diagnosis.includes('<hr')) {
+          // If it's plain text, format it properly
+          diagnosis = diagnosis.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+          diagnosis = diagnosis.replace(/\n/g, '<br>');
+          diagnosis = `<div style="line-height: 1.6; color: #2D3748; padding: 1rem;">${diagnosis}</div>`;
+        } else {
+          // If it's already HTML, just clean it up
+          diagnosis = diagnosis.trim();
+        }
       } catch (geminiError) {
         if (geminiError.message === 'QUOTA_EXCEEDED') {
           console.log('ℹ️ Switching to intelligent fallback system - providing medical guidance in your language');

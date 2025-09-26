@@ -341,3 +341,54 @@
     transform: translateY(0);
   }
 }
+
+/* Enhanced diagnosis result styling */
+.diagnosis-result h3 {
+  font-size: 1.1rem !important;
+  color: #003153 !important;
+  font-weight: bold !important;
+  margin: 1.5rem 0 0.5rem 0 !important;
+  padding: 0 !important;
+}
+
+.diagnosis-result hr {
+  margin: 0.5rem 0 1rem 0 !important;
+  border: none !important;
+  border-top: 1px solid #ccc !important;
+}
+
+.diagnosis-result ol {
+  list-style-type: decimal !important;
+  padding-left: 20px !important;
+  margin: 0 0 1.5rem 0 !important;
+}
+
+.diagnosis-result li {
+  margin-bottom: 0.75rem !important;
+  line-height: 1.6 !important;
+  color: #2D3748 !important;
+}
+
+.diagnosis-result li b {
+  font-weight: 600 !important;
+  color: #1a365d !important;
+}
+
+.diagnosis-result div {
+  margin-bottom: 1.5rem !important;
+}
+
+/* Info box styling */
+.diagnosis-result > div:first-child {
+  background: #e3f2fd !important;
+  border: 1px solid #90caf9 !important;
+  border-radius: 8px !important;
+  padding: 1rem !important;
+  margin-bottom: 1.5rem !important;
+}
+
+.diagnosis-result > div:first-child p {
+  margin: 0 !important;
+  color: #1565c0 !important;
+  font-size: 0.9rem !important;
+}

@@ -41,11 +41,14 @@ class GeminiService:
 
 Generate a professional HTML response ENTIRELY IN {target_language} language. Use <div> containers and <ol><li> for numbered bullet points. Each section must include exactly 6 points, and each point should begin with a <b>label</b> summarizing its meaning.
 
-IMPORTANT: Respond completely in {target_language}. All text, labels, headings, and content must be in {target_language}.
+CRITICAL INSTRUCTIONS:
+- Respond completely in {target_language}. All text, labels, headings, and content must be in {target_language}.
+- Return ONLY clean HTML code without any markdown, backticks, or code block markers
+- Do NOT include ```html or ``` or any other formatting markers
+- Start directly with the HTML content
 
-Use this reusable template:
+Use this exact template structure:
 
----
 <hr style='width: 100%; border: none; border-top: 2px solid #f28b82; margin: 2rem 0;'>
 
 <div>
@@ -53,12 +56,13 @@ Use this reusable template:
   <hr style='margin: 0.2rem 0 1rem 0; border: none; border-top: 1px solid #ccc;'>
   <ol style='list-style-type: decimal; padding-left: 20px;'>
     <li><b>[Label in {target_language}]:</b> [Point content in {target_language}]</li>
-    ...
+    <li><b>[Label in {target_language}]:</b> [Point content in {target_language}]</li>
+    <li><b>[Label in {target_language}]:</b> [Point content in {target_language}]</li>
+    <li><b>[Label in {target_language}]:</b> [Point content in {target_language}]</li>
+    <li><b>[Label in {target_language}]:</b> [Point content in {target_language}]</li>
     <li><b>[Label in {target_language}]:</b> [Point content in {target_language}]</li>
   </ol>
 </div>
-
----
 
 Include these 5 sections (translate section titles to {target_language}):
 1. 📋 Diagnosis Summary – (Condition, Cause, Symptom Relation, Body System, Severity, Uncertainty)
@@ -67,7 +71,7 @@ Include these 5 sections (translate section titles to {target_language}):
 4. 🚫 Things to Avoid – (Food, Activities, Interactions, Triggers, Habits, Delay)
 5. 📅 Follow-Up Suggestions – (Visit, Tests, Monitoring, Red Flags, Specialists, Tools)
 
-Respond only with complete, valid HTML in {target_language}. No additional comments."""
+Return ONLY the HTML content in {target_language}. No markdown, no code blocks, no additional text."""
 
         try:
             result = self.model.generate_content(prompt)
