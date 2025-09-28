@@ -23,6 +23,11 @@ const Profile = () => {
   const [activities, setActivities] = useState([]);
   const [settings, setSettings] = useState(null);
   const [editForm, setEditForm] = useState({});
+  const [rawValues, setRawValues] = useState({
+    height: '',
+    weight: '',
+    heartRate: ''
+  });
 
   // Create effective user for development or use current user
   const effectiveUser = currentUser || {
@@ -81,8 +86,17 @@ const Profile = () => {
               height: data.health?.height || '',
               weight: data.health?.weight || '',
               bloodType: data.health?.bloodType || '',
+              heartRate: data.health?.heartRate || '',
+              bloodPressure: data.health?.bloodPressure || '',
               allergies: data.health?.allergies || [],
               medications: data.health?.medications || []
+            });
+            
+            // Initialize raw values for editing
+            setRawValues({
+              height: data.health?.height?.replace(/[^\d.]/g, '') || '',
+              weight: data.health?.weight?.replace(/[^\d.]/g, '') || '',
+              heartRate: data.health?.heartRate?.replace(/[^\d]/g, '') || ''
             });
             
             console.log('✅ Profile data loaded from server');
@@ -114,8 +128,17 @@ const Profile = () => {
                 height: result.data.health?.height || '',
                 weight: result.data.health?.weight || '',
                 bloodType: result.data.health?.bloodType || '',
+                heartRate: result.data.health?.heartRate || '',
+                bloodPressure: result.data.health?.bloodPressure || '',
                 allergies: result.data.health?.allergies || [],
                 medications: result.data.health?.medications || []
+              });
+              
+              // Initialize raw values for editing
+              setRawValues({
+                height: result.data.health?.height?.replace(/[^\d.]/g, '') || '',
+                weight: result.data.health?.weight?.replace(/[^\d.]/g, '') || '',
+                heartRate: result.data.health?.heartRate?.replace(/[^\d]/g, '') || ''
               });
               
               console.log('✅ Profile data loaded from Firebase');
@@ -195,8 +218,16 @@ const Profile = () => {
       height: '',
       weight: '',
       bloodType: '',
+      heartRate: '',
+      bloodPressure: '',
       allergies: [],
       medications: []
+    });
+    
+    setRawValues({
+      height: '',
+      weight: '',
+      heartRate: ''
     });
   };
 
@@ -225,11 +256,11 @@ const Profile = () => {
         height: editForm.height,
         weight: editForm.weight,
         bloodType: editForm.bloodType,
+        heartRate: editForm.heartRate || '72 bpm',
+        bloodPressure: editForm.bloodPressure || '120/80',
         allergies: editForm.allergies,
         medications: editForm.medications,
-        bmi: calculateBMI(editForm.height, editForm.weight),
-        bloodPressure: healthData?.bloodPressure || '120/80',
-        heartRate: healthData?.heartRate || '72 bpm'
+        bmi: calculateBMI(editForm.height, editForm.weight)
       };
 
       let profileResult, healthResult;
@@ -403,15 +434,32 @@ const Profile = () => {
   };
 
   const calculateBMI = (height, weight) => {
-    // Simple BMI calculation (this is a basic implementation)
+    // Enhanced BMI calculation with better parsing
     if (!height || !weight) return '';
     
-    const heightInM = parseFloat(height.replace(/[^\d.]/g, '')) * 0.3048; // Convert feet to meters
+    // Parse height (assume cm if just number, convert from feet if contains ')
+    let heightInM;
+    const heightNum = parseFloat(height.replace(/[^\d.]/g, ''));
+    if (height.includes("'") || height.includes('ft')) {
+      heightInM = heightNum * 0.3048; // Convert feet to meters
+    } else {
+      heightInM = heightNum / 100; // Convert cm to meters
+    }
+    
     const weightInKg = parseFloat(weight.replace(/[^\d.]/g, ''));
+    
     if (heightInM && weightInKg && heightInM > 0 && weightInKg > 0) {
       return (weightInKg / (heightInM * heightInM)).toFixed(1);
     }
     return '';
+  };
+
+  const getBMICategory = (bmi) => {
+    const bmiValue = parseFloat(bmi);
+    if (bmiValue < 18.5) return { category: 'Underweight', color: '#3498db' };
+    if (bmiValue < 25) return { category: 'Normal', color: '#27ae60' };
+    if (bmiValue < 30) return { category: 'Overweight', color: '#f39c12' };
+    return { category: 'Obese', color: '#e74c3c' };
   };
 
   const formatTimeAgo = (timestamp) => {
@@ -681,127 +729,281 @@ const Profile = () => {
           {activeTab === 'health' && (
             <div className="tab-content">
               <div className="health-grid">
-                <div className="health-card">
-                  <h3><FontAwesomeIcon icon={faRuler} /> Physical Stats</h3>
-                  <div className="health-stats">
-                    {/* Editable Height */}
-                    <div className="stat-box">
-                      <FontAwesomeIcon icon={faRuler} />
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          value={editForm.height}
-                          onChange={(e) => setEditForm({...editForm, height: e.target.value})}
-                          placeholder="Height (e.g., 5'8'')"
-                          className="edit-input stat-input"
-                        />
-                      ) : (
-                        <span className="stat-value">{healthData?.height || editForm.height || ''}</span>
-                      )}
-                      <span className="stat-label">Height</span>
+                {/* Physical Stats Card */}
+                <div className="health-card enhanced">
+                  <div className="card-header">
+                    <h3><FontAwesomeIcon icon={faRuler} /> Physical Measurements</h3>
+                    <div className="health-score">
+                      <span className="score-label">Health Score</span>
+                      <span className="score-value">{healthData?.healthScore || '85'}%</span>
                     </div>
-                    
-                    {/* Editable Weight */}
-                    <div className="stat-box">
-                      <FontAwesomeIcon icon={faWeight} />
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          value={editForm.weight}
-                          onChange={(e) => setEditForm({...editForm, weight: e.target.value})}
-                          placeholder="Weight (e.g., 70 kg)"
-                          className="edit-input stat-input"
-                        />
-                      ) : (
-                        <span className="stat-value">{healthData?.weight || editForm.weight || ''}</span>
-                      )}
-                      <span className="stat-label">Weight</span>
+                  </div>
+                  <div className="health-stats-grid">
+                    {/* Height */}
+                    <div className="stat-card">
+                      <div className="stat-icon">
+                        <FontAwesomeIcon icon={faRuler} />
+                      </div>
+                      <div className="stat-content">
+                        <span className="stat-label">Height</span>
+                        {isEditing ? (
+                          <div className="input-group">
+                            <input
+                              type="number"
+                              value={rawValues.height}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                setRawValues({...rawValues, height: value});
+                                setEditForm({...editForm, height: value ? value + ' cm' : ''});
+                              }}
+                              placeholder="170"
+                              className="stat-input"
+                            />
+                            <span className="input-unit">cm</span>
+                          </div>
+                        ) : (
+                          <span className="stat-value">{healthData?.height || editForm.height || 'Not set'}</span>
+                        )}
+                        <div className="stat-info">
+                          <small>Average: 165-175 cm</small>
+                        </div>
+                      </div>
                     </div>
-                    
-                    {/* BMI (calculated) */}
-                    <div className="stat-box">
-                      <FontAwesomeIcon icon={faChartLine} />
-                      <span className="stat-value">{healthData?.bmi || calculateBMI(editForm.height, editForm.weight)}</span>
-                      <span className="stat-label">BMI</span>
+
+                    {/* Weight */}
+                    <div className="stat-card">
+                      <div className="stat-icon">
+                        <FontAwesomeIcon icon={faWeight} />
+                      </div>
+                      <div className="stat-content">
+                        <span className="stat-label">Weight</span>
+                        {isEditing ? (
+                          <div className="input-group">
+                            <input
+                              type="number"
+                              value={rawValues.weight}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                setRawValues({...rawValues, weight: value});
+                                setEditForm({...editForm, weight: value ? value + ' kg' : ''});
+                              }}
+                              placeholder="70"
+                              className="stat-input"
+                            />
+                            <span className="input-unit">kg</span>
+                          </div>
+                        ) : (
+                          <span className="stat-value">{healthData?.weight || editForm.weight || 'Not set'}</span>
+                        )}
+                        <div className="stat-info">
+                          <small>Healthy range: 55-85 kg</small>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* BMI */}
+                    <div className="stat-card bmi-card">
+                      <div className="stat-icon">
+                        <FontAwesomeIcon icon={faChartLine} />
+                      </div>
+                      <div className="stat-content">
+                        <span className="stat-label">BMI</span>
+                        <span className="stat-value bmi-value">
+                          {healthData?.bmi || calculateBMI(rawValues.height ? rawValues.height + ' cm' : editForm.height, rawValues.weight ? rawValues.weight + ' kg' : editForm.weight) || 'Calculate'}
+                        </span>
+                        <div className="bmi-indicator">
+                          {(() => {
+                            const bmi = parseFloat(healthData?.bmi || calculateBMI(rawValues.height ? rawValues.height + ' cm' : editForm.height, rawValues.weight ? rawValues.weight + ' kg' : editForm.weight));
+                            if (bmi < 18.5) return <span className="bmi-status underweight">Underweight</span>;
+                            if (bmi < 25) return <span className="bmi-status normal">Normal</span>;
+                            if (bmi < 30) return <span className="bmi-status overweight">Overweight</span>;
+                            if (bmi >= 30) return <span className="bmi-status obese">Obese</span>;
+                            return <small>Enter height & weight</small>;
+                          })()} 
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="health-card">
-                  <h3><FontAwesomeIcon icon={faHeartbeat} /> Vital Signs & Blood Type</h3>
-                  <div className="health-stats">
-                    <div className="stat-box">
-                      <FontAwesomeIcon icon={faHeartbeat} />
-                      <span className="stat-value">{healthData?.heartRate || ''}</span>
-                      <span className="stat-label">Heart Rate</span>
+                {/* Vital Signs Card */}
+                <div className="health-card enhanced">
+                  <div className="card-header">
+                    <h3><FontAwesomeIcon icon={faHeartbeat} /> Vital Signs & Blood Info</h3>
+                    <div className="last-updated">
+                      <small>Last updated: {new Date().toLocaleDateString()}</small>
                     </div>
-                    <div className="stat-box">
-                      <FontAwesomeIcon icon={faTint} />
-                      <span className="stat-value">{healthData?.bloodPressure || ''}</span>
-                      <span className="stat-label">Blood Pressure</span>
+                  </div>
+                  <div className="health-stats-grid">
+                    {/* Heart Rate */}
+                    <div className="stat-card">
+                      <div className="stat-icon pulse">
+                        <FontAwesomeIcon icon={faHeartbeat} />
+                      </div>
+                      <div className="stat-content">
+                        <span className="stat-label">Heart Rate</span>
+                        {isEditing ? (
+                          <div className="input-group">
+                            <input
+                              type="number"
+                              value={rawValues.heartRate}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                setRawValues({...rawValues, heartRate: value});
+                                setEditForm({...editForm, heartRate: value ? value + ' bpm' : ''});
+                              }}
+                              placeholder="72"
+                              className="stat-input"
+                            />
+                            <span className="input-unit">bpm</span>
+                          </div>
+                        ) : (
+                          <span className="stat-value">{healthData?.heartRate || editForm.heartRate || '72 bpm'}</span>
+                        )}
+                        <div className="stat-info">
+                          <small>Normal: 60-100 bpm</small>
+                        </div>
+                      </div>
                     </div>
-                    
-                    {/* Editable Blood Type */}
-                    <div className="stat-box">
-                      <FontAwesomeIcon icon={faTint} />
-                      {isEditing ? (
-                        <select
-                          value={editForm.bloodType}
-                          onChange={(e) => setEditForm({...editForm, bloodType: e.target.value})}
-                          className="edit-input stat-input"
-                        >
-                          <option value="">Select Blood Type</option>
-                          <option value="A+">A+</option>
-                          <option value="A-">A-</option>
-                          <option value="B+">B+</option>
-                          <option value="B-">B-</option>
-                          <option value="AB+">AB+</option>
-                          <option value="AB-">AB-</option>
-                          <option value="O+">O+</option>
-                          <option value="O-">O-</option>
-                        </select>
-                      ) : (
-                        <span className="stat-value">{healthData?.bloodType || editForm.bloodType || ''}</span>
-                      )}
-                      <span className="stat-label">Blood Type</span>
+
+                    {/* Blood Pressure */}
+                    <div className="stat-card">
+                      <div className="stat-icon">
+                        <FontAwesomeIcon icon={faTint} />
+                      </div>
+                      <div className="stat-content">
+                        <span className="stat-label">Blood Pressure</span>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={editForm.bloodPressure || ''}
+                            onChange={(e) => setEditForm({...editForm, bloodPressure: e.target.value})}
+                            placeholder="120/80"
+                            className="stat-input"
+                          />
+                        ) : (
+                          <span className="stat-value">{healthData?.bloodPressure || editForm.bloodPressure || '120/80'}</span>
+                        )}
+                        <div className="stat-info">
+                          <small>Normal: &lt;120/80 mmHg</small>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Blood Type */}
+                    <div className="stat-card">
+                      <div className="stat-icon">
+                        <FontAwesomeIcon icon={faTint} />
+                      </div>
+                      <div className="stat-content">
+                        <span className="stat-label">Blood Type</span>
+                        {isEditing ? (
+                          <select
+                            value={editForm.bloodType}
+                            onChange={(e) => setEditForm({...editForm, bloodType: e.target.value})}
+                            className="stat-select"
+                          >
+                            <option value="">Select Type</option>
+                            <option value="A+">A+ (34%)</option>
+                            <option value="A-">A- (6%)</option>
+                            <option value="B+">B+ (9%)</option>
+                            <option value="B-">B- (2%)</option>
+                            <option value="AB+">AB+ (3%)</option>
+                            <option value="AB-">AB- (1%)</option>
+                            <option value="O+">O+ (38%)</option>
+                            <option value="O-">O- (7%)</option>
+                          </select>
+                        ) : (
+                          <span className="stat-value blood-type">{healthData?.bloodType || editForm.bloodType || 'Not set'}</span>
+                        )}
+                        <div className="stat-info">
+                          <small>Universal donor: O-</small>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Editable Allergies and Medications */}
-                <div className="health-card full-width">
-                  <h3><FontAwesomeIcon icon={faHistory} /> Medical Information</h3>
-                  <div className="medical-info">
-                    <div className="medical-section">
-                      <h4>Allergies</h4>
-                      {isEditing ? (
-                        <textarea
-                          value={Array.isArray(editForm.allergies) ? editForm.allergies.join(', ') : editForm.allergies}
-                          onChange={(e) => setEditForm({...editForm, allergies: e.target.value.split(', ').filter(a => a.trim())})}
-                          placeholder="Enter allergies separated by commas"
-                          className="edit-textarea"
-                          rows="2"
-                        />
-                      ) : (
-                        <p>{Array.isArray(healthData?.allergies) ? healthData.allergies.join(', ') : 
-                             Array.isArray(editForm.allergies) ? editForm.allergies.join(', ') : ''}</p>
-                      )}
+                {/* Medical Information Card */}
+                <div className="health-card enhanced full-width">
+                  <div className="card-header">
+                    <h3><FontAwesomeIcon icon={faShieldAlt} /> Medical Information</h3>
+                    <div className="emergency-badge">
+                      <FontAwesomeIcon icon={faShieldAlt} />
+                      <span>Critical Info</span>
                     </div>
-                    
-                    <div className="medical-section">
-                      <h4>Current Medications</h4>
-                      {isEditing ? (
-                        <textarea
-                          value={Array.isArray(editForm.medications) ? editForm.medications.join(', ') : editForm.medications}
-                          onChange={(e) => setEditForm({...editForm, medications: e.target.value.split(', ').filter(m => m.trim())})}
-                          placeholder="Enter medications separated by commas"
-                          className="edit-textarea"
-                          rows="2"
-                        />
-                      ) : (
-                        <p>{Array.isArray(healthData?.medications) ? healthData.medications.join(', ') : 
-                             Array.isArray(editForm.medications) ? editForm.medications.join(', ') : ''}</p>
-                      )}
+                  </div>
+                  <div className="medical-grid">
+                    {/* Allergies */}
+                    <div className="medical-card">
+                      <div className="medical-header">
+                        <FontAwesomeIcon icon={faShieldAlt} className="medical-icon allergies" />
+                        <h4>Allergies & Reactions</h4>
+                      </div>
+                      <div className="medical-content">
+                        {isEditing ? (
+                          <div className="tag-input-container">
+                            <textarea
+                              value={Array.isArray(editForm.allergies) ? editForm.allergies.join(', ') : editForm.allergies}
+                              onChange={(e) => setEditForm({...editForm, allergies: e.target.value.split(', ').filter(a => a.trim())})}
+                              placeholder="e.g., Peanuts, Shellfish, Penicillin"
+                              className="medical-textarea"
+                              rows="3"
+                            />
+                            <small className="input-help">Separate multiple allergies with commas</small>
+                          </div>
+                        ) : (
+                          <div className="tags-display">
+                            {(Array.isArray(healthData?.allergies) ? healthData.allergies : 
+                              Array.isArray(editForm.allergies) ? editForm.allergies : []).length > 0 ? (
+                              (Array.isArray(healthData?.allergies) ? healthData.allergies : editForm.allergies).map((allergy, index) => (
+                                <span key={index} className="medical-tag allergy-tag">
+                                  <FontAwesomeIcon icon={faShieldAlt} />
+                                  {allergy}
+                                </span>
+                              ))
+                            ) : (
+                              <p className="no-data">No known allergies</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Medications */}
+                    <div className="medical-card">
+                      <div className="medical-header">
+                        <FontAwesomeIcon icon={faHeartbeat} className="medical-icon medications" />
+                        <h4>Current Medications</h4>
+                      </div>
+                      <div className="medical-content">
+                        {isEditing ? (
+                          <div className="tag-input-container">
+                            <textarea
+                              value={Array.isArray(editForm.medications) ? editForm.medications.join(', ') : editForm.medications}
+                              onChange={(e) => setEditForm({...editForm, medications: e.target.value.split(', ').filter(m => m.trim())})}
+                              placeholder="e.g., Aspirin 100mg daily, Vitamin D"
+                              className="medical-textarea"
+                              rows="3"
+                            />
+                            <small className="input-help">Include dosage and frequency if known</small>
+                          </div>
+                        ) : (
+                          <div className="tags-display">
+                            {(Array.isArray(healthData?.medications) ? healthData.medications : 
+                              Array.isArray(editForm.medications) ? editForm.medications : []).length > 0 ? (
+                              (Array.isArray(healthData?.medications) ? healthData.medications : editForm.medications).map((medication, index) => (
+                                <span key={index} className="medical-tag medication-tag">
+                                  <FontAwesomeIcon icon={faHeartbeat} />
+                                  {medication}
+                                </span>
+                              ))
+                            ) : (
+                              <p className="no-data">No current medications</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

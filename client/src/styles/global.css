@@ -282,7 +282,7 @@ body {
 
 .nav-bar {
     background: white;
-    padding: 1rem 2rem;
+    padding: 0.75rem 2rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -291,6 +291,7 @@ body {
     top: 0;
     z-index: 1000;
     animation: fadeInUp 0.5s ease-out;
+    min-height: 60px;
 }
 
 .nav-brand {
@@ -301,11 +302,12 @@ body {
 
 .nav-brand h1 {
     color: var(--primary);
-    font-size: 2rem;
+    font-size: 1.5rem;
     margin: 0;
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    line-height: 1.2;
 }
 
 /* === WhatsApp Logo Styling === */
@@ -708,6 +710,38 @@ h1, h2 {
 
 .menu-toggle {
     display: none;
+    position: relative;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.menu-icon {
+    display: block;
+}
+
+.profile-icon-in-toggle {
+    display: none;
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: var(--primary);
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    font-size: 0.7rem;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Show profile icon in toggle button only on desktop */
+@media (min-width: 769px) {
+    .menu-toggle .profile-icon-in-toggle {
+        display: flex;
+    }
 }
 
 .profile-icon {
@@ -801,6 +835,12 @@ h1, h2 {
         cursor: pointer;
         transition: background-color 0.3s, transform 0.3s;
         margin-left: 6px;
+        position: relative;
+    }
+    
+    /* Hide profile icon in toggle button on mobile */
+    .menu-toggle .profile-icon-in-toggle {
+        display: none !important;
     }
 
     .menu-toggle:hover {

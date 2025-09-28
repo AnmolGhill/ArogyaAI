@@ -128,13 +128,31 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true);
       setError(null);
+      
+      // Call Firebase signOut first
+      const firebaseResult = await firebaseAuthService.signOut();
+      if (!firebaseResult.success) {
+        console.warn('Firebase signOut failed:', firebaseResult.error);
+      }
+      
+      // Clear local state regardless of Firebase result
       setCurrentUser(null);
       setUserProfile(null);
       localStorage.removeItem('user');
-      console.log(' Signed out successfully');
+      localStorage.clear(); // Clear all localStorage data
+      
+      console.log('🚪 Signed out successfully');
       return { success: true };
     } catch (error) {
+      console.error('SignOut error:', error);
       setError(error.message);
+      
+      // Even if there's an error, clear local state
+      setCurrentUser(null);
+      setUserProfile(null);
+      localStorage.removeItem('user');
+      localStorage.clear();
+      
       return { success: false, error: error.message };
     } finally {
       setLoading(false);

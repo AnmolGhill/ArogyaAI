@@ -175,34 +175,63 @@ async def get_complete_profile(
             ]
             
         except Exception as firebase_error:
-            logger.warning(f"Firebase error: {firebase_error}, returning empty data for development")
-            # Return empty data structure for development
-            profile_data = {
-                'name': current_user.get('name', ''),
-                'email': current_user.get('email', ''),
-                'age': None,
-                'gender': '',
-                'phone': '',
-                'location': '',
-                'emergencyContact': '',
-                'photoURL': None,
-                'createdAt': datetime.utcnow(),
-                'updatedAt': datetime.utcnow()
-            }
-            
-            health_data = {
-                'height': '',
-                'weight': '',
-                'bmi': '',
-                'bloodType': '',
-                'bloodPressure': '',
-                'heartRate': '',
-                'allergies': [],
-                'medications': [],
-                'updatedAt': datetime.utcnow()
-            }
-            
-            activities = []
+            logger.warning(f"Firebase error: {firebase_error}, returning development data")
+            # Return development data from memory storage if available
+            if hasattr(firebase_service, 'dev_storage'):
+                profile_data = firebase_service.dev_storage.get('users', {}).get(user_id, {
+                    'name': current_user.get('name', ''),
+                    'email': current_user.get('email', ''),
+                    'age': None,
+                    'gender': '',
+                    'phone': '',
+                    'location': '',
+                    'emergencyContact': '',
+                    'photoURL': None,
+                    'createdAt': datetime.utcnow(),
+                    'updatedAt': datetime.utcnow()
+                })
+                
+                health_data = firebase_service.dev_storage.get('healthProfiles', {}).get(user_id, {
+                    'height': '',
+                    'weight': '',
+                    'bmi': '',
+                    'bloodType': '',
+                    'bloodPressure': '120/80',
+                    'heartRate': '72 bpm',
+                    'allergies': [],
+                    'medications': [],
+                    'updatedAt': datetime.utcnow()
+                })
+                
+                activities = firebase_service.dev_storage.get('activities', {}).get(user_id, [])
+            else:
+                # Return empty data structure for development
+                profile_data = {
+                    'name': current_user.get('name', ''),
+                    'email': current_user.get('email', ''),
+                    'age': None,
+                    'gender': '',
+                    'phone': '',
+                    'location': '',
+                    'emergencyContact': '',
+                    'photoURL': None,
+                    'createdAt': datetime.utcnow(),
+                    'updatedAt': datetime.utcnow()
+                }
+                
+                health_data = {
+                    'height': '',
+                    'weight': '',
+                    'bmi': '',
+                    'bloodType': '',
+                    'bloodPressure': '120/80',
+                    'heartRate': '72 bpm',
+                    'allergies': [],
+                    'medications': [],
+                    'updatedAt': datetime.utcnow()
+                }
+                
+                activities = []
             
             settings_data = {
                 'notifications': {
@@ -283,6 +312,12 @@ async def update_personal_info(
             logger.warning(f"Firebase update failed: {firebase_error}, simulating success for development")
             # In development mode, just log the update
             logger.info(f"Development mode update for user {user_id}: {update_data}")
+            # Store in memory for development (you could also use a local file or in-memory cache)
+            if not hasattr(firebase_service, 'dev_storage'):
+                firebase_service.dev_storage = {}
+            if 'users' not in firebase_service.dev_storage:
+                firebase_service.dev_storage['users'] = {}
+            firebase_service.dev_storage['users'][user_id] = {**firebase_service.dev_storage['users'].get(user_id, {}), **update_data}
         
         return {"success": True, "message": "Personal information updated successfully"}
         
@@ -339,6 +374,12 @@ async def update_health_profile(
             logger.warning(f"Firebase health update failed: {firebase_error}, simulating success for development")
             # In development mode, just log the update
             logger.info(f"Development mode health update for user {user_id}: {health_data}")
+            # Store in memory for development
+            if not hasattr(firebase_service, 'dev_storage'):
+                firebase_service.dev_storage = {}
+            if 'healthProfiles' not in firebase_service.dev_storage:
+                firebase_service.dev_storage['healthProfiles'] = {}
+            firebase_service.dev_storage['healthProfiles'][user_id] = {**firebase_service.dev_storage['healthProfiles'].get(user_id, {}), **health_data}
         
         return {"success": True, "message": "Health profile updated successfully"}
         
@@ -379,16 +420,34 @@ async def add_activity_record(
                 detail="Access denied"
             )
         
-        db = firebase_service.db
-        activities_ref = db.collection('userActivity').document(user_id).collection('activities')
-        
-        # Add timestamp and create activity
-        activity_data['timestamp'] = datetime.utcnow()
-        activity_data['id'] = str(uuid.uuid4())
-        
-        activities_ref.add(activity_data)
-        
-        logger.info(f"Activity added for user: {user_id}")
+        try:
+            db = firebase_service.db
+            if db is None:
+                raise Exception("Firebase not configured")
+                
+            activities_ref = db.collection('userActivity').document(user_id).collection('activities')
+            
+            # Add timestamp and create activity
+            activity_data['timestamp'] = datetime.utcnow()
+            activity_data['id'] = str(uuid.uuid4())
+            
+            activities_ref.add(activity_data)
+            
+            logger.info(f"Activity added for user: {user_id}")
+        except Exception as firebase_error:
+            logger.warning(f"Firebase activity add failed: {firebase_error}, storing in development mode")
+            # Store in memory for development
+            if not hasattr(firebase_service, 'dev_storage'):
+                firebase_service.dev_storage = {}
+            if 'activities' not in firebase_service.dev_storage:
+                firebase_service.dev_storage['activities'] = {}
+            if user_id not in firebase_service.dev_storage['activities']:
+                firebase_service.dev_storage['activities'][user_id] = []
+            
+            activity_data['timestamp'] = datetime.utcnow()
+            activity_data['id'] = str(uuid.uuid4())
+            firebase_service.dev_storage['activities'][user_id].append(activity_data)
+            logger.info(f"Development mode activity added for user {user_id}: {activity_data}")
         
         return {"success": True, "message": "Activity record added successfully"}
         
@@ -428,14 +487,27 @@ async def update_user_settings(
                 detail="Access denied"
             )
         
-        db = firebase_service.db
-        settings_ref = db.collection('userSettings').document(user_id)
-        
-        # Update settings document
-        settings_data['updatedAt'] = datetime.utcnow()
-        settings_ref.set(settings_data, merge=True)
-        
-        logger.info(f"Settings updated for user: {user_id}")
+        try:
+            db = firebase_service.db
+            if db is None:
+                raise Exception("Firebase not configured")
+                
+            settings_ref = db.collection('userSettings').document(user_id)
+            
+            # Update settings document
+            settings_data['updatedAt'] = datetime.utcnow()
+            settings_ref.set(settings_data, merge=True)
+            
+            logger.info(f"Settings updated for user: {user_id}")
+        except Exception as firebase_error:
+            logger.warning(f"Firebase settings update failed: {firebase_error}, storing in development mode")
+            # Store in memory for development
+            if not hasattr(firebase_service, 'dev_storage'):
+                firebase_service.dev_storage = {}
+            if 'settings' not in firebase_service.dev_storage:
+                firebase_service.dev_storage['settings'] = {}
+            firebase_service.dev_storage['settings'][user_id] = settings_data
+            logger.info(f"Development mode settings updated for user {user_id}: {settings_data}")
         
         return {"success": True, "message": "Settings updated successfully"}
         
@@ -513,12 +585,27 @@ async def upload_profile_picture(
             photo_url = f"/uploads/profile_pictures/{filename}"
             
             # Update user document with new photo URL
-            db = firebase_service.db
-            user_ref = db.collection('users').document(user_id)
-            user_ref.set({
-                'photoURL': photo_url,
-                'updatedAt': datetime.utcnow()
-            }, merge=True)
+            try:
+                db = firebase_service.db
+                if db is None:
+                    raise Exception("Firebase not configured")
+                    
+                user_ref = db.collection('users').document(user_id)
+                user_ref.set({
+                    'photoURL': photo_url,
+                    'updatedAt': datetime.utcnow()
+                }, merge=True)
+            except Exception as firebase_error:
+                logger.warning(f"Firebase photo URL update failed: {firebase_error}, storing in development mode")
+                # Store in memory for development
+                if not hasattr(firebase_service, 'dev_storage'):
+                    firebase_service.dev_storage = {}
+                if 'users' not in firebase_service.dev_storage:
+                    firebase_service.dev_storage['users'] = {}
+                if user_id not in firebase_service.dev_storage['users']:
+                    firebase_service.dev_storage['users'][user_id] = {}
+                firebase_service.dev_storage['users'][user_id]['photoURL'] = photo_url
+                firebase_service.dev_storage['users'][user_id]['updatedAt'] = datetime.utcnow()
             
             logger.info(f"Profile picture uploaded for user: {user_id}")
             
@@ -572,16 +659,34 @@ async def add_medical_history(
                 detail="Access denied"
             )
         
-        db = firebase_service.db
-        history_ref = db.collection('medicalHistory').document(user_id).collection('entries')
-        
-        # Add timestamp and create history entry
-        history_data['timestamp'] = datetime.utcnow()
-        history_data['id'] = str(uuid.uuid4())
-        
-        history_ref.add(history_data)
-        
-        logger.info(f"Medical history added for user: {user_id}")
+        try:
+            db = firebase_service.db
+            if db is None:
+                raise Exception("Firebase not configured")
+                
+            history_ref = db.collection('medicalHistory').document(user_id).collection('entries')
+            
+            # Add timestamp and create history entry
+            history_data['timestamp'] = datetime.utcnow()
+            history_data['id'] = str(uuid.uuid4())
+            
+            history_ref.add(history_data)
+            
+            logger.info(f"Medical history added for user: {user_id}")
+        except Exception as firebase_error:
+            logger.warning(f"Firebase medical history add failed: {firebase_error}, storing in development mode")
+            # Store in memory for development
+            if not hasattr(firebase_service, 'dev_storage'):
+                firebase_service.dev_storage = {}
+            if 'medicalHistory' not in firebase_service.dev_storage:
+                firebase_service.dev_storage['medicalHistory'] = {}
+            if user_id not in firebase_service.dev_storage['medicalHistory']:
+                firebase_service.dev_storage['medicalHistory'][user_id] = []
+            
+            history_data['timestamp'] = datetime.utcnow()
+            history_data['id'] = str(uuid.uuid4())
+            firebase_service.dev_storage['medicalHistory'][user_id].append(history_data)
+            logger.info(f"Development mode medical history added for user {user_id}: {history_data}")
         
         return {"success": True, "message": "Medical history entry added successfully"}
         
@@ -620,15 +725,26 @@ async def get_medical_history(
                 detail="Access denied"
             )
         
-        db = firebase_service.db
-        history_ref = db.collection('medicalHistory').document(user_id).collection('entries')
-        history_query = history_ref.order_by('timestamp', direction='DESCENDING')
-        history_docs = history_query.stream()
-        
-        medical_history = [
-            {**doc.to_dict(), 'id': doc.id} 
-            for doc in history_docs
-        ]
+        try:
+            db = firebase_service.db
+            if db is None:
+                raise Exception("Firebase not configured")
+                
+            history_ref = db.collection('medicalHistory').document(user_id).collection('entries')
+            history_query = history_ref.order_by('timestamp', direction='DESCENDING')
+            history_docs = history_query.stream()
+            
+            medical_history = [
+                {**doc.to_dict(), 'id': doc.id} 
+                for doc in history_docs
+            ]
+        except Exception as firebase_error:
+            logger.warning(f"Firebase medical history get failed: {firebase_error}, using development data")
+            # Get from memory storage for development
+            if hasattr(firebase_service, 'dev_storage') and 'medicalHistory' in firebase_service.dev_storage:
+                medical_history = firebase_service.dev_storage['medicalHistory'].get(user_id, [])
+            else:
+                medical_history = []
         
         return {
             "success": True,

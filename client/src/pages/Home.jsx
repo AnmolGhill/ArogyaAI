@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faHeartbeat, 
@@ -16,28 +16,103 @@ import Sidebar from '../components/Sidebar';
 import GoogleMapWidget from '../components/GoogleMapWidget';
 import ConnectionTest from '../components/ConnectionTest';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
+import { apiService } from '../services/api';
 
 const Home = () => {
   const { t } = useLanguage();
+  const { currentUser } = useAuth();
   const [healthData, setHealthData] = useState({
     weight: 'Loading...',
     height: 'Loading...',
-    bloodType: 'Loading...'
+    bloodType: 'Loading...',
+    bmi: 'Loading...'
   });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const isLoadingRef = useRef(false);
+
+  // Create effective user for development or use current user (memoized to prevent infinite loops)
+  const effectiveUser = useMemo(() => {
+    return currentUser || {
+      uid: 'dev_user_123',
+      email: 'dev@arogyaai.com',
+      displayName: 'Development User'
+    };
+  }, [currentUser]);
+
+  // Calculate BMI from height and weight
+  const calculateBMI = (height, weight) => {
+    if (!height || !weight) return '';
+    
+    // Parse height (assume cm if just number, convert from feet if contains ')
+    let heightInM;
+    const heightNum = parseFloat(height.replace(/[^\d.]/g, ''));
+    if (height.includes("'") || height.includes('ft')) {
+      heightInM = heightNum * 0.3048; // Convert feet to meters
+    } else {
+      heightInM = heightNum / 100; // Convert cm to meters
+    }
+    
+    const weightInKg = parseFloat(weight.replace(/[^\d.]/g, ''));
+    
+    if (heightInM && weightInKg && heightInM > 0 && weightInKg > 0) {
+      return (weightInKg / (heightInM * heightInM)).toFixed(1);
+    }
+    return '';
+  };
 
   useEffect(() => {
-    // Load user health data
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    if (user.userId) {
-      // In a real app, you would fetch this from the API
-      // For now, we'll use mock data
-      setHealthData({
-        weight: '70 kg',
-        height: '175 cm',
-        bloodType: 'O+'
-      });
-    }
-  }, []);
+    const loadUserHealthData = async () => {
+      if (!effectiveUser || !effectiveUser.uid || isLoadingRef.current) return;
+      
+      isLoadingRef.current = true;
+      setLoading(true);
+      setError(null);
+      
+      try {
+        console.log('🔍 Loading health data for user:', effectiveUser.uid);
+        
+        // Fetch complete profile data from API
+        const response = await apiService.profile.getCompleteProfile(effectiveUser.uid);
+        
+        if (response.data && response.data.success) {
+          const profileData = response.data.data;
+          const health = profileData.health || {};
+          
+          // Calculate BMI if height and weight are available
+          const bmi = calculateBMI(health.height, health.weight);
+          
+          setHealthData({
+            weight: health.weight || 'Not set',
+            height: health.height || 'Not set',
+            bloodType: health.bloodType || 'Not set',
+            bmi: bmi || 'Not available'
+          });
+          
+          console.log('✅ Health data loaded successfully:', health);
+        } else {
+          throw new Error('Failed to fetch profile data');
+        }
+      } catch (apiError) {
+        console.warn('API error, using fallback data:', apiError.message);
+        setError('Unable to load health data');
+        
+        // Fallback to mock data if API fails
+        setHealthData({
+          weight: '70 kg',
+          height: '175 cm',
+          bloodType: 'O+',
+          bmi: '22.9'
+        });
+      } finally {
+        setLoading(false);
+        isLoadingRef.current = false;
+      }
+    };
+
+    loadUserHealthData();
+  }, [effectiveUser.uid]);
 
   return (
     <div className="main-container">
@@ -46,6 +121,22 @@ const Home = () => {
       <div className="content">
         {/* Connection Test */}
         <ConnectionTest />
+
+        {/* Error Display */}
+        {error && (
+          <div style={{
+            backgroundColor: '#fff3cd',
+            border: '1px solid #ffeaa7',
+            color: '#856404',
+            padding: '12px',
+            borderRadius: '8px',
+            margin: '20px 0',
+            textAlign: 'center'
+          }}>
+            <FontAwesomeIcon icon={faHeartbeat} style={{ marginRight: '8px' }} />
+            {error} - Using fallback data for demonstration
+          </div>
+        )}
 
         {/* Hero Section */}
         <div className="hero-section">
@@ -160,12 +251,26 @@ const Home = () => {
                 <div className="metric-card">
                   <div className="metric-header">
                     <h4>BMI</h4>
-                    <span className="metric-value">22.5</span>
+                    <span className="metric-value">
+                      {loading ? 'Loading...' : (healthData.bmi !== 'Not available' ? healthData.bmi : 'N/A')}
+                    </span>
                   </div>
                   <div className="metric-indicator">
-                    <div className="indicator-bar" style={{ width: '75%' }}></div>
+                    <div className="indicator-bar" style={{ 
+                      width: healthData.bmi !== 'Not available' && !loading ? 
+                        `${Math.min((parseFloat(healthData.bmi) / 30) * 100, 100)}%` : '0%' 
+                    }}></div>
                   </div>
-                  <span className="metric-status">{t('normal')}</span>
+                  <span className="metric-status">
+                    {loading ? 'Loading...' : (() => {
+                      const bmi = parseFloat(healthData.bmi);
+                      if (isNaN(bmi)) return 'Not available';
+                      if (bmi < 18.5) return 'Underweight';
+                      if (bmi < 25) return t('normal');
+                      if (bmi < 30) return 'Overweight';
+                      return 'Obese';
+                    })()}
+                  </span>
                 </div>
               </div>
             </div>

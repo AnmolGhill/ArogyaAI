@@ -7,7 +7,9 @@ import {
   signInWithPopup,
   GoogleAuthProvider,
   signOut as firebaseSignOut,
-  onAuthStateChanged
+  onAuthStateChanged,
+  setPersistence,
+  browserSessionPersistence
 } from 'firebase/auth';
 import { 
   getFirestore, 
@@ -74,6 +76,14 @@ if (useMockFirebase) {
   db = getFirestore(app);
   storage = getStorage(app);
   googleProvider = new GoogleAuthProvider();
+  
+  // Set authentication persistence to session only (won't persist after browser close)
+  try {
+    setPersistence(auth, browserSessionPersistence);
+    console.log('🔒 Firebase auth persistence set to session only');
+  } catch (error) {
+    console.warn('Failed to set auth persistence:', error);
+  }
 }
 
 // Export the services

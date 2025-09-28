@@ -22,12 +22,24 @@ const Navbar = () => {
 
   const handleLogout = async () => {
     try {
+      console.log('🚪 Initiating logout...');
       const result = await signOut();
       if (result.success) {
+        console.log('✅ Logout successful, redirecting...');
+        // Clear any remaining data and force page reload
+        localStorage.clear();
+        sessionStorage.clear();
         navigate('/');
+        // Force a page reload to ensure complete cleanup
+        window.location.reload();
       }
     } catch (error) {
       console.error('Logout error:', error);
+      // Even if logout fails, clear local data and redirect
+      localStorage.clear();
+      sessionStorage.clear();
+      navigate('/');
+      window.location.reload();
     }
   };
 
@@ -110,7 +122,10 @@ const Navbar = () => {
       <div className="nav-right">
         {/* Mobile menu icon */}
         <div className="menu-toggle" onClick={toggleMenu}>
-          &#9776;
+          <span className="menu-icon">&#9776;</span>
+          {currentUser && (
+            <FontAwesomeIcon icon={faUserCircle} className="profile-icon-in-toggle" />
+          )}
         </div>
 
         {/* Buttons */}
