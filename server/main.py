@@ -20,6 +20,7 @@ from app.routes.firebase_auth_routes import router as firebase_auth_router
 from app.routes.health_routes import router as health_router
 from app.routes.diagnosis_routes import router as diagnosis_router
 from app.routes.profile_routes import router as profile_router
+from app.routes.maps_routes import router as maps_router
 
 # Configure logging
 logging.basicConfig(
@@ -35,6 +36,13 @@ async def lifespan(app: FastAPI):
     try:
         await connect_to_firebase()
         logger.info("🚀 FastAPI server starting up...")
+        
+        # Check Google Maps API configuration
+        if settings.GOOGLE_MAPS_API_KEY:
+            logger.info("🗺️ Google Maps API key configured - Geocoding service ready")
+        else:
+            logger.warning("⚠️ Google Maps API key not configured - Geocoding service unavailable")
+            
     except Exception as e:
         logger.error(f"❌ Startup error: {e}")
         raise e
@@ -120,6 +128,7 @@ app.include_router(firebase_auth_router)
 app.include_router(health_router)
 app.include_router(diagnosis_router)
 app.include_router(profile_router)
+app.include_router(maps_router)
 
 # Health check endpoint
 @app.get(
@@ -147,7 +156,8 @@ async def health_check():
             "database": "🟢 MongoDB Atlas Connected",
             "ai_engine": "🟢 Google Gemini AI Ready",
             "email_service": "🟢 SMTP Service Active",
-            "authentication": "🟢 JWT Service Running"
+            "authentication": "🟢 JWT Service Running",
+            "google_maps": "🟢 Google Maps API Ready" if settings.GOOGLE_MAPS_API_KEY else "🔴 Google Maps API Not Configured"
         }
     }
 
@@ -170,6 +180,7 @@ async def root():
     - 🔐 **Authentication**: `/api/auth/*`
     - 👤 **Health Profiles**: `/api/user-health`
     - 🤖 **AI Diagnosis**: `/api/get_diagnosis`
+    - 🗺️ **Google Maps**: `/api/maps/geocode`
     """
     return {
         "message": "🩺 Welcome to HALO Healthcare API",
@@ -181,6 +192,7 @@ async def root():
             "👤 Health Profile Management", 
             "🤖 AI-Powered Diagnosis",
             "📧 Email Notifications",
+            "🗺️ Google Maps Integration",
             "🔒 HIPAA Compliant"
         ],
         "docs": "/docs" if settings.DEBUG else "📖 Documentation available in development mode",

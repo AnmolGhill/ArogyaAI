@@ -13,6 +13,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { faWhatsapp } from '@fortawesome/free-brands-svg-icons';
 import Sidebar from '../components/Sidebar';
+import GoogleMapWidget from '../components/GoogleMapWidget';
 import ConnectionTest from '../components/ConnectionTest';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -56,21 +57,9 @@ const Home = () => {
                   <FontAwesomeIcon icon={faHeartbeat} /> {t('heroTitle')}
                 </h2>
                 
-                {/* Animation placeholder - you can add Lottie later */}
-                <div style={{ width: '260px', height: '200px', margin: '0 auto' }}>
-                  <div style={{ 
-                    background: 'linear-gradient(45deg, #4299E1, #2C5282)', 
-                    width: '100%', 
-                    height: '100%', 
-                    borderRadius: '12px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white',
-                    fontSize: '3rem'
-                  }}>
-                    <FontAwesomeIcon icon={faHeartbeat} />
-                  </div>
+                {/* Google Map (responsive) */}
+                <div style={{ margin: '0 auto', width: '100%', maxWidth: '720px' }}>
+                  <GoogleMapWidget />
                 </div>
 
                 {/* Description */}

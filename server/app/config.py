@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     
     # Google AI Configuration
     GOOGLE_API_KEY: str = os.getenv("GOOGLE_API_KEY", "")
+    # Google Maps Platform API Key (for Geocoding, Places, etc.)
+    GOOGLE_MAPS_API_KEY: str = os.getenv("GOOGLE_MAPS_API_KEY", "")
     
     # Email Configuration
     SMTP_EMAIL: str = os.getenv("SMTP_EMAIL", "")
